@@ -117,9 +117,15 @@ def _get(client: httpx.Client, url: str, headers: dict[str, str]) -> httpx.Respo
             body += chunk
             if len(body) > MAX_BYTES:
                 break
+        # The body is already decoded, so drop headers that describe the wire form.
+        decoded = {
+            key: value
+            for key, value in response.headers.items()
+            if key.lower() not in {"content-encoding", "content-length", "transfer-encoding"}
+        }
         return httpx.Response(
             response.status_code,
-            headers=response.headers,
+            headers=decoded,
             content=body[:MAX_BYTES],
             request=response.request,
         )
