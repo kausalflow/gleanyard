@@ -233,3 +233,9 @@ def test_missing_selector_file_is_reported_by_validate(tmp_path):
         },
     )
     assert any("not found" in issue.message for issue in load_project(root).issues)
+
+
+def test_jsonld_lookup_star():
+    node = {"distribution": [{"encodingFormat": "CSV"}, {"encodingFormat": "GeoJSON"}]}
+    assert lookup(node, "distribution.*.encodingFormat") == ["CSV", "GeoJSON"]
+    assert lookup(node, "distribution.encodingFormat") == "CSV"  # no star: first element

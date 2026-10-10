@@ -1,0 +1,34 @@
+# Second example project: a catalog of open datasets. Nothing here is about events.
+name: dataset
+version: 1
+description: One published dataset.
+identity: [title, publisher]
+fields:
+  title:
+    type: string
+    required: true
+    aliases: [name, title]
+  publisher:
+    type: string
+    required: true
+    aliases: [publisher, organization.name]
+  landing_page:
+    type: url
+    required: true
+    aliases: [url, link]
+  license:
+    type: string
+    aliases: [license]
+  modified:
+    type: datetime
+    aliases: [dateModified, pubDate]
+  formats:
+    type: string
+    many: true
+    aliases: [encodingFormat]
+  size_bytes:
+    type: int
+  description:
+    type: text
+    class: protected_text
+    aliases: [description]

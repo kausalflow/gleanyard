@@ -99,3 +99,11 @@ def test_to_bool():
     assert to_bool("No") is False
     with pytest.raises(NormalizeError):
         to_bool("maybe")
+
+
+def test_rfc2822_dates_from_rss_and_http():
+    assert to_datetime("Tue, 01 Sep 2026 10:00:00 GMT") == "2026-09-01T10:00:00+00:00"
+    assert to_datetime("Mon, 17 Aug 2026 09:15:00 +0200") == "2026-08-17T09:15:00+02:00"
+    assert to_date("Mon, 17 Aug 2026 09:15:00 +0200") == "2026-08-17"
+    with pytest.raises(NormalizeError):
+        to_datetime("Someday, 99 Foo 2026")

@@ -47,9 +47,16 @@ def _collect(value: Any, wanted: set[str], found: list[Item]) -> None:
 
 def lookup(node: Any, path: str) -> Any:
     """Dot path through a JSON-LD node. A list is read at its first element unless a number
-    is given, because ``offers`` and ``image`` may be one object or a list of them."""
-    current = node
-    for part in path.split("."):
+    is given, because ``offers`` and ``image`` may be one object or a list of them. ``*``
+    reads the rest of the path in every element and returns a list."""
+    return _plain(_follow(node, path.split(".")))
+
+
+def _follow(current: Any, parts: list[str]) -> Any:
+    for index, part in enumerate(parts):
+        if part == "*" and isinstance(current, list):
+            values = [_plain(_follow(element, parts[index + 1 :])) for element in current]
+            return [value for value in values if value is not None] or None
         if isinstance(current, list):
             if part.isdigit():
                 current = current[int(part)] if int(part) < len(current) else None
@@ -62,7 +69,7 @@ def lookup(node: Any, path: str) -> Any:
             return None
         if current is None:
             return None
-    return _plain(current)
+    return current
 
 
 def _plain(value: Any) -> Any:

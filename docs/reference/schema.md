@@ -40,8 +40,8 @@ fields:
 | --- | --- | --- |
 | `string` | any text | one line, tags and entities removed |
 | `text` | any text | paragraphs kept |
-| `date` | ISO dates and datetimes, `12.10.2026`, `1.2.26` | `2026-10-12` |
-| `datetime` | ISO datetimes | ISO datetime, offset kept; naive stays naive |
+| `date` | ISO dates and datetimes, RSS and HTTP dates, `12.10.2026`, `1.2.26` | `2026-10-12` |
+| `datetime` | ISO datetimes and RSS or HTTP dates (`Tue, 01 Sep 2026 10:00:00 GMT`) | ISO datetime, offset kept; naive stays naive |
 | `time_text` | `19:30`, `ab 18 Uhr` | text as written, 80 characters at most |
 | `postcode` | `50667`, `D-50667` | digits only for `DE` |
 | `url` | absolute or relative | absolute `http(s)` URL, resolved against the source page |
