@@ -80,6 +80,20 @@ prints sample records, how often each field is filled, why records were rejected
 over 20% of candidates were rejected, or when over half of the records lost a field to a
 warning. Exits 1 on `FAIL`. `--markdown` prints the report as a pull request description.
 
+## `gleanyard map SOURCE [PROJECT] [--model ID] [--force] [--dry-run] [--json]`
+
+Drafts (or repairs) the selector mapping of a `selectors` source with crawl4ai's
+`generate_schema`. It fetches one sample page (the first page of a sitemap), asks the model
+for a mapping that names the schema's fields, checks that the draft validates and finds
+records on that page, and only then writes `extract.selectors`. The report lists how often
+each mapped field is filled, fields that are not in the schema and required fields left
+uncovered; run `gleanyard try` next to judge it with the full schema.
+
+Needs the optional extra `pip install 'gleanyard[map]'`, the source's `send_to_model` right
+(the page is sent to a model provider), and the provider's API key in the environment. `--model`
+takes a provider/model id such as `anthropic/<model>`. An existing mapping is replaced only with
+`--force`; `--dry-run` writes nothing. Exits 1 when the draft is unusable or finds no records.
+
 ## `gleanyard export [PROJECT] [--json]`
 
 Writes the rights-filtered public export, by default `exports/records.jsonl` (set `export`
