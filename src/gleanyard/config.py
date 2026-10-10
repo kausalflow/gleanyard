@@ -187,5 +187,8 @@ class ProjectConfig(StrictModel):
     storage: StorageConfig = Field(default_factory=StorageConfig)
     rights_policy: RightsPolicy = Field(default_factory=RightsPolicy)
     export: str = Field(default="exports/records.jsonl", description="Public export path.")
+    status: str = Field(
+        default="status.json", description="Health report path, read by the status hub."
+    )
 
     model_config = {"extra": "forbid", "populate_by_name": True}

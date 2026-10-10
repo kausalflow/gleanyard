@@ -13,6 +13,7 @@ from gleanyard.config import ProjectConfig, SourceConfig
 from gleanyard.project import load_project
 from gleanyard.run import collect_source, export_project
 from gleanyard.schema import ProjectSchema
+from gleanyard.status import build_status, load_status, write_status
 
 app = typer.Typer(no_args_is_help=True, add_completion=False, help=__doc__)
 
@@ -110,6 +111,8 @@ def collect(
     else:
         selected = [item for item in project.sources if item.enabled]
     runs = [collect_source(project, item, from_cache=from_cache) for item in selected]
+    if not from_cache and runs:
+        write_status(project, build_status(project, runs, load_status(project)))
     if as_json:
         typer.echo(json.dumps([run.model_dump() for run in runs], indent=2))
     else:
@@ -135,3 +138,21 @@ def export(root: ProjectDir = Path("."), as_json: JsonFlag = False) -> None:
         typer.echo(json.dumps({"path": str(path), "records": count}))
     else:
         typer.echo(f"wrote {count} records to {path}")
+
+
+@app.command()
+def status(root: ProjectDir = Path("."), as_json: JsonFlag = False) -> None:
+    """Show the health report from the last `collect`; exit 1 if any source is not ok."""
+    project = _loaded(root)
+    report = load_status(project)
+    if report is None:
+        typer.echo("no status yet: run `gleanyard collect` first", err=True)
+        raise typer.Exit(1)
+    if as_json:
+        typer.echo(json.dumps(report.model_dump(mode="json"), indent=2))
+    else:
+        for item in report.sources:
+            detail = item.error or item.note or f"{item.records} records"
+            typer.echo(f"{item.health:9} {item.id}: {detail}")
+    if not report.healthy:
+        raise typer.Exit(1)

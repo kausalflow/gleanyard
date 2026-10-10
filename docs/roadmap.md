@@ -11,8 +11,7 @@ extraction, `collect`, `collect --from-cache` and the rights-filtered `export`.
 ## 2. Extraction modes (in progress)
 
 Done: `jsonld` for pages with schema.org markup and `selectors` using crawl4ai-style JSON
-CSS schemas, on single pages and sitemaps. Still to come: `llm` with per-run cost and page caps, and PDF delivery. Per-source health
-(`status.json`) with expected-empty handling. Pages that need paging or filters bring
+CSS schemas, on single pages and sitemaps, and per-source health in `status.json`. Still to come: `llm` with per-run cost and page caps, and PDF delivery. Pages that need paging or filters bring
 `pagination_changed` and `filter_ignored` errors.
 
 ## 3. Project template
