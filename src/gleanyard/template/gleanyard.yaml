@@ -1,0 +1,4 @@
+# Project settings; every key is optional. See https://kausalflow.github.io/gleanyard/
+schema_version: 1
+user_agent: "{{project}} (+https://github.com/OWNER/{{project}})"   # say who you are; add a contact URL
+excluded_hosts: []        # hosts research must not propose

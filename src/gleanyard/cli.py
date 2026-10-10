@@ -11,7 +11,8 @@ import typer
 
 from gleanyard import __version__
 from gleanyard.config import ProjectConfig, SourceConfig
-from gleanyard.errors import SourceError
+from gleanyard.errors import ConfigError, SourceError
+from gleanyard.init import init_project
 from gleanyard.probe import probe as probe_url
 from gleanyard.project import load_project
 from gleanyard.run import collect_source, export_project
@@ -292,3 +293,22 @@ def scaffold(
         typer.echo(f"note: {note}", err=True)
     if write:
         typer.echo(f"wrote {path}", err=True)
+
+
+@app.command()
+def init(
+    directory: Annotated[Path, typer.Argument(help="New project directory (empty or missing).")],
+    schema: Annotated[str, typer.Option(help="Name of the project schema.")] = "record",
+    name: Annotated[
+        str | None, typer.Option(help="Project name; default: the directory name.")
+    ] = None,
+) -> None:
+    """Create a collection project: schema, workflows and CLAUDE.md for an AI assistant."""
+    project = name or directory.resolve().name.lower().replace("_", "-")
+    try:
+        written = init_project(directory, project, schema)
+    except ConfigError as error:
+        typer.echo(str(error), err=True)
+        raise typer.Exit(1) from error
+    typer.echo(f"created {project!r} in {directory} ({len(written)} files)")
+    typer.echo("next: edit schema.yaml and research.md, then `gleanyard validate`")

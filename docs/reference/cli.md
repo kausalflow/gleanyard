@@ -34,6 +34,11 @@ validate.
 
 Shows the health report written by the last `collect` (see [Health and status.json](../concepts/status.md)). Exits 1 if any source is `degraded` or `failing`, or if no report exists yet.
 
+## `gleanyard init DIR [--schema NAME] [--name NAME]`
+
+Creates a collection project in an empty (or missing) directory from the bundled template; see
+[the repo template](../concepts/repo-template.md).
+
 ## `gleanyard probe URL [--root DIR] [--json]`
 
 Looks at a site without a model: reads `robots.txt` and the page (two requests), finds
