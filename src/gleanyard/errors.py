@@ -17,6 +17,7 @@ class ErrorKind(StrEnum):
     BOUNDS_EXCEEDED = "bounds_exceeded"
     TRANSPORT = "transport"
     BLOCKED = "blocked"
+    MODEL = "model"
 
 
 class GleanyardError(Exception):
@@ -71,3 +72,9 @@ class Blocked(SourceError):
     """The host refused access (robots.txt, 401/403, or a challenge page)."""
 
     kind = ErrorKind.BLOCKED
+
+
+class ModelError(SourceError):
+    """The language model was unavailable, failed, or returned unusable output."""
+
+    kind = ErrorKind.MODEL

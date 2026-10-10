@@ -13,6 +13,7 @@ rights:
   allowed_actions:
     private_store: true            # keep raw pages and records
     normalize: true                # turn them into records
+    send_to_model: false           # allow `llm` mode to send page text to a model provider
     redistribute_facts: true       # export fact fields
     redistribute_text: false       # export protected text
     redistribute_images: false     # export images

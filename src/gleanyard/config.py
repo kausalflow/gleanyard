@@ -120,6 +120,13 @@ class LlmLimits(StrictModel):
     max_pages_per_run: int = Field(default=20, ge=1, le=500)
     max_cost_per_run_eur: float = Field(default=0.5, gt=0, le=50)
     only_if_changed: bool = True
+    input_price_per_mtok_eur: float = Field(
+        default=5.0, ge=0, description="Used to estimate cost against max_cost_per_run_eur."
+    )
+    output_price_per_mtok_eur: float = Field(default=25.0, ge=0)
+    max_input_chars: int = Field(
+        default=60_000, ge=1000, description="Page text beyond this is not sent."
+    )
 
 
 class LlmExtract(_ExtractBase):

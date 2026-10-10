@@ -65,7 +65,7 @@ source does not carry.
 | `fields` | `map`: schema field to source key or dot path |
 | `jsonld` | `types`: schema.org types to read; optional `map` |
 | `selectors` | `selectors`: path to a crawl4ai JSON CSS schema, relative to the project |
-| `llm` | `llm.model`, `llm.max_pages_per_run`, `llm.max_cost_per_run_eur`, `llm.only_if_changed`; optional `instructions` |
+| `llm` | `llm.model`, `llm.max_pages_per_run`, `llm.max_cost_per_run_eur`, `llm.only_if_changed`, `llm.input_price_per_mtok_eur`, `llm.output_price_per_mtok_eur`, `llm.max_input_chars`; optional `instructions` |
 
 Only `fields` runs today. The others are accepted in config so projects can be written
 ahead of the extraction runners; see the [roadmap](../roadmap.md).

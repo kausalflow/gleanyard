@@ -31,6 +31,7 @@ class AllowedActions(StrictModel):
     discover_urls: bool = True
     private_store: bool = False
     normalize: bool = False
+    send_to_model: bool = False
     redistribute_facts: bool = False
     redistribute_text: bool = False
     redistribute_images: bool = False

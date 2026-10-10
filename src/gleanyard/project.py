@@ -17,6 +17,7 @@ from pydantic import BaseModel, ValidationError
 from gleanyard.config import (
     FieldsExtract,
     JsonLdExtract,
+    LlmExtract,
     ProjectConfig,
     SelectorsExtract,
     SourceConfig,
@@ -139,6 +140,12 @@ def _cross_check(
             ["enabled"],
             "an enabled source needs rights.allowed_actions.private_store and normalize; "
             "set enabled: false until rights are reviewed",
+        )
+    if source.enabled and isinstance(extract, LlmExtract) and not actions.send_to_model:
+        issue(
+            ["rights", "allowed_actions", "send_to_model"],
+            "llm mode sends page text to a model provider; set send_to_model: true once the "
+            "source's rights allow it",
         )
     unknown_public = [name for name in source.rights.public_fields if name not in schema.fields]
     if unknown_public:
