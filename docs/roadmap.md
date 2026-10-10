@@ -13,7 +13,8 @@ extraction, `collect`, `collect --from-cache` and the rights-filtered `export`.
 Done: `jsonld` for pages with schema.org markup, `selectors` using crawl4ai-style JSON CSS
 schemas (both on single pages and sitemaps), per-source health in `status.json`, and `llm`
 with per-run cost and page caps and a page-hash cache, and PDF delivery through `llm`. Paged
-sources are supported through `pagination`, with `pagination_changed` when paging misbehaves.
+sources are supported through `pagination`, with `pagination_changed` when paging misbehaves. A
+source `filter` guards URL filters and raises `filter_ignored` when the source stops honouring them.
 
 ## 3. Project template (in progress)
 

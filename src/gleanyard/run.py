@@ -19,15 +19,16 @@ import httpx
 from pydantic import BaseModel, Field
 
 from gleanyard.cache import RawCache
-from gleanyard.collect import Extraction, OutputRecord, extract
+from gleanyard.collect import Extraction, OutputRecord, Rejection, extract
 from gleanyard.config import Delivery, LlmExtract, Pagination, SelectorsExtract, SourceConfig
-from gleanyard.errors import PaginationChanged, SourceError, StructureChanged
+from gleanyard.errors import FilterIgnored, PaginationChanged, SourceError, StructureChanged
 from gleanyard.export import public_record
 from gleanyard.extract.llm import LlmSession, ModelClient, PydanticAiClient
 from gleanyard.extract.selectors import SelectorSchema
 from gleanyard.fetch import Fetcher, Response
 from gleanyard.project import Project
 from gleanyard.readers import read_sitemap
+from gleanyard.schema import FieldIssue
 from gleanyard.storage import LocalObjectStore
 
 
@@ -102,6 +103,7 @@ def collect_source(
                 responses = fetch_pages(fetcher, source)
                 result = extract_pages(project, source, responses, today, selectors, session)
             manifest = fetcher.finish()
+        apply_filter(source, result)
     except FileNotFoundError as error:
         return SourceRun(source_id=source.id, ok=False, error_kind="no_cache", error=str(error))
     except SourceError as error:
@@ -129,6 +131,52 @@ def collect_source(
         model_calls=session.calls if session else 0,
         cost_eur=round(session.cost_eur, 6) if session else 0.0,
     )
+
+
+def apply_filter(source: SourceConfig, result: Extraction) -> None:
+    """Check the result against the source's URL filter, in place.
+
+    Records with no value for the filtered field cannot be judged and stay. When too
+    many records fall outside the filter it was not applied by the source, so the run
+    fails; a few strays are moved to the review file.
+    """
+    rule = source.filter
+    if rule is None:
+        return
+    inside = {_fold(value) for value in rule.one_of}
+    judged = [record for record in result.records if rule.field in record.values]
+    outside = [record for record in judged if _fold(record.values[rule.field]) not in inside]
+    if not outside:
+        return
+    share = len(outside) / len(judged)
+    if share > rule.max_outside_share:
+        raise FilterIgnored(
+            source.id,
+            f"{len(outside)} of {len(judged)} records have {rule.field} outside "
+            f"{', '.join(map(str, rule.one_of))}; the source's filter is no longer applied",
+        )
+    gone = {record.id for record in outside}
+    result.records = [record for record in result.records if record.id not in gone]
+    for record in outside:
+        result.rejections.append(
+            Rejection(
+                source_id=source.id,
+                url=record.provenance.url,
+                raw_sha256=record.provenance.raw_sha256,
+                values=record.values,
+                errors=[
+                    FieldIssue(
+                        field=rule.field,
+                        reason="outside the source filter",
+                        value=str(record.values[rule.field]),
+                    )
+                ],
+            )
+        )
+
+
+def _fold(value: object) -> str:
+    return str(value).casefold()
 
 
 def selector_schema(project: Project, source: SourceConfig) -> SelectorSchema | None:

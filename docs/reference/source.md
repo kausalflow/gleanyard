@@ -35,6 +35,7 @@ retention: {raw_days: 30}
 | `reader` | Options for the delivery; see below. Unknown keys are errors. |
 | `extract` | How to map onto the schema; see below. |
 | `pagination` | Optional. Walk a paged source; see below. |
+| `filter` | Optional. Check that a filter in the URL is still applied; see below. |
 | `fetch` | Request limits. |
 | `expect_empty` | `never` (default) or `seasonal`. A seasonal source with no records is healthy, not failing. |
 | `coverage` | Where the source applies. Informational. |
@@ -90,6 +91,24 @@ pagination: {param: page, start: 1, step: 1, max_pages: 10}
 Pages are fetched until one has no records. A run fails with `pagination_changed` when a page
 repeats an earlier document or only records already seen, or when records still arrive after
 `max_pages`. `collect --from-cache` replays every cached page.
+
+## `filter`
+
+When the URL narrows the data (`?city=aachen`), a source can quietly stop honouring it and
+return everything. `filter` states what should be inside and is checked on the extracted
+records.
+
+```yaml
+filter: {field: city, one_of: [Aachen], max_outside_share: 0.2}
+```
+
+| Key | Meaning |
+| --- | --- |
+| `field` | Schema field the URL filter constrains. |
+| `one_of` | Values that count as inside; strings ignore case. |
+| `max_outside_share` | Default 0.2. When more of the records fall outside, the run fails with `filter_ignored`; fewer are moved to the review file. |
+
+Records with no value for the field are not judged.
 
 ## `fetch` limits
 

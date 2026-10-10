@@ -134,6 +134,8 @@ def _cross_check(
             )
     if isinstance(extract, SelectorsExtract) and not (root / extract.selectors).is_file():
         issue(["extract", "selectors"], f"selector file {extract.selectors!r} not found")
+    if source.filter is not None and source.filter.field not in schema.fields:
+        issue(["filter", "field"], _unknown_field(source.filter.field, schema))
     actions = source.rights.allowed_actions
     if source.enabled and not (actions.private_store and actions.normalize):
         issue(
