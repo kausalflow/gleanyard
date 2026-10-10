@@ -86,6 +86,8 @@ def to_time_text(value: Any) -> str:
     """Human time text such as ``19:30`` or ``ab 18 Uhr``, kept as written."""
     if isinstance(value, datetime):
         return value.strftime("%H:%M")
+    if isinstance(value, date):
+        return ""  # an all-day date carries no time
     text = clean_text(value)
     if len(text) > 80:
         raise NormalizeError("time text longer than 80 characters")

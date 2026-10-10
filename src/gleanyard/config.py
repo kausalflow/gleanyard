@@ -44,6 +44,7 @@ MODES_FOR_DELIVERY: dict[Delivery, frozenset[str]] = {
 class IcalReader(StrictModel):
     timezone: str = "UTC"
     max_occurrences: int = Field(default=5000, ge=1)
+    past_days: int = Field(default=7, ge=0, description="Keep recurrences this far back.")
     horizon_days: int = Field(default=366, ge=1, description="Expand recurrences this far ahead.")
 
 
