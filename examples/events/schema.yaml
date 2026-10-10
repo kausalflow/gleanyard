@@ -1,0 +1,48 @@
+# Example project schema: public events in North Rhine-Westphalia.
+name: event
+version: 1
+description: One dated public event.
+identity: [title, start_date, time_text]
+fields:
+  title:
+    type: string
+    required: true
+    max_length: 300
+    aliases: [SUMMARY, name, headline]
+  start_date:
+    type: date
+    required: true
+    aliases: [DTSTART, startDate]
+    scope: {min: today-1}
+  end_date:
+    type: date
+    aliases: [DTEND, endDate]
+  time_text:
+    type: time_text
+  venue:
+    type: string
+    aliases: [LOCATION, location.name]
+  postal_code:
+    type: postcode
+    country: DE
+    scope: {pattern: "^(3[2-3]|4[0-9]|5[0-3]|57|59)"}
+  city:
+    type: string
+  source_url:
+    type: url
+    required: true
+    aliases: [URL, url]
+  price:
+    type: money
+    currency: EUR
+  categories:
+    type: string
+    many: true
+  description:
+    type: text
+    class: protected_text
+    aliases: [DESCRIPTION, description]
+  image_url:
+    type: url
+    class: image
+    aliases: [image]

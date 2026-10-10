@@ -1,0 +1,10 @@
+{
+  "name": "Gut Hixholz events",
+  "baseSelector": "table.table tr",
+  "fields": [
+    {"name": "start_date", "selector": "td:nth-child(2)", "type": "text"},
+    {"name": "time_text", "selector": "td:nth-child(3)", "type": "text"},
+    {"name": "title", "selector": "td:nth-child(4)", "type": "text"},
+    {"name": "source_url", "selector": "td:nth-child(5) a", "type": "attribute", "attribute": "href"}
+  ]
+}

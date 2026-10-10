@@ -1,0 +1,19 @@
+id: gut-hixholz-farm-events
+schema: event
+enabled: false
+delivery: html
+url: https://www.gut-hixholz.de/Mitmach-Termine--Alle-Events-im-Ueberblick_4313.aspx
+extract:
+  mode: selectors                        # pinned at setup; changed only by a repair PR
+  selectors: mappings/gut-hixholz-farm-events.json
+  defaults:
+    venue: Gut Hixholz
+    postal_code: "42551"
+    city: Velbert
+expect_empty: seasonal                   # empty runs are normal off-season
+rights:
+  copyright_class: protected_text
+  effective_tier: internal_only
+  allowed_actions:
+    private_store: true
+    normalize: true
