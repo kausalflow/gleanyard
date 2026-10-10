@@ -1,5 +1,7 @@
 # gleanyard
 
+**Documentation: https://kausalflow.github.io/gleanyard/**
+
 Gleanyard collects structured data from recurring web sources into a schema you define.
 
 Gleanyard is early and under active development. The design is in the v2 design doc;
