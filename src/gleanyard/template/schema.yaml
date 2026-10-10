@@ -1,0 +1,18 @@
+# The contract every record must meet. Describe ONE record of your project.
+name: {{schema}}
+version: 1
+description: TODO describe one record in a sentence.
+identity: [title, source_url]      # fields that together identify one record in a source
+fields:
+  title:
+    type: string
+    required: true
+    aliases: [SUMMARY, name, headline, title]
+  source_url:
+    type: url
+    required: true
+    aliases: [URL, url, link]
+  description:
+    type: text
+    class: protected_text           # not exported unless the source's rights allow text
+    aliases: [DESCRIPTION, description]

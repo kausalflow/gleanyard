@@ -1,0 +1,4 @@
+data/raw/
+data/llm/
+.venv/
+__pycache__/
