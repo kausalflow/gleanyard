@@ -1,3 +1,5 @@
+import gzip
+
 import httpx
 import pytest
 
@@ -114,3 +116,18 @@ def test_robots_sitemaps_are_reported():
 def test_rejects_urls_with_credentials():
     with pytest.raises(ValueError):
         probe("https://user:pw@hof.example/", user_agent=UA)
+
+
+def test_gzip_pages_are_decoded_once():
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path == "/robots.txt":
+            return httpx.Response(404)
+        return httpx.Response(
+            200,
+            content=gzip.compress(PAGE_WITH_JSONLD),
+            headers={"content-type": "text/html", "content-encoding": "gzip"},
+        )
+
+    client = httpx.Client(transport=httpx.MockTransport(handler))
+    report = probe("https://hof.example/events", user_agent=UA, client=client)
+    assert "Event" in report.jsonld_types
