@@ -1,0 +1,33 @@
+id: aachen-city-events
+name: Veranstaltungskalender der Stadt Aachen
+schema: event
+enabled: false
+delivery: ical
+url: https://www.aachen.de/kalender/veranstaltungskalender-alle-termine/event.ics?tagMode=ALL&weekends=false
+homepage: https://www.aachen.de/services/veranstaltungskalender/
+reader:
+  timezone: Europe/Berlin
+  max_occurrences: 5000
+extract:
+  mode: fields
+  map:
+    title: SUMMARY
+    start_date: DTSTART
+    end_date: DTEND
+    venue: LOCATION
+    source_url: URL
+    description: DESCRIPTION
+  defaults:
+    city: Aachen
+coverage:
+  country: DE
+  region: Nordrhein-Westfalen
+  city: Aachen
+  scope_type: municipality
+  scope_name: Aachen
+  categories: [government, culture, community]
+rights:
+  effective_tier: internal_only
+  allowed_actions:
+    private_store: true
+    normalize: true

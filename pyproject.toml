@@ -7,19 +7,37 @@ license = "MIT"
 license-files = ["LICENSE"]
 authors = [{ name = "KausalFlow" }]
 requires-python = ">=3.11"
-dependencies = []
+dependencies = [
+    "pydantic>=2.7,<3",
+    "pyyaml>=6,<7",
+    "typer>=0.12,<1",
+]
 classifiers = [
     "Development Status :: 1 - Planning",
     "Programming Language :: Python :: 3",
     "Operating System :: OS Independent",
 ]
 
+[project.scripts]
+gleanyard = "gleanyard.cli:app"
+
 [project.urls]
 Repository = "https://github.com/kausalflow/gleanyard"
 
 [dependency-groups]
-dev = ["pytest>=8"]
+dev = ["pytest>=8", "ruff>=0.6"]
 
 [build-system]
 requires = ["hatchling>=1.27"]
 build-backend = "hatchling.build"
+
+[tool.pytest.ini_options]
+addopts = "-q"
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
