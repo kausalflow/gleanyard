@@ -16,6 +16,24 @@ pr_waiting_days: 7
 digest_weekday: 0         # Monday; null turns the weekly digest off
 ```
 
+## The dashboard
+
+`gleanyard hub build` turns the snapshot into one static page (`site/index.html`, no
+JavaScript): a row per repo with a red, amber or green marker, opening to its sources, their
+last success and error, and the setup or repair pull requests waiting for review, with links
+to each repo's Actions tab. A repo that needs attention starts open. The page follows the
+reader's light or dark setting and works on a phone.
+
+## Creating the hub
+
+```bash
+gleanyard hub init collection-status --repo kausalflow/my-events --repo kausalflow/my-markets
+```
+
+writes `hub.yaml`, a `hub` workflow that runs every three hours (read the repos, sync issues,
+build the page, deploy to GitHub Pages) and a README with the three settings to change: the
+repo list, Pages source set to GitHub Actions, and an optional `HUB_TOKEN` secret.
+
 ## Alerts fire on change
 
 Every problem has a stable key, such as `kausalflow/my-events:city-events:failing`. A problem

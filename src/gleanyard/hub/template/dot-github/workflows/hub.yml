@@ -1,0 +1,36 @@
+name: hub
+on:
+  schedule:
+    - cron: "11 */3 * * *"
+  workflow_dispatch:
+permissions:
+  contents: read
+  issues: write
+  pages: write
+  id-token: write
+concurrency:
+  group: hub
+  cancel-in-progress: false
+jobs:
+  hub:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install "gleanyard>=0.1"
+      - name: Read the repos and sync alert issues
+        env:
+          GH_TOKEN: ${{ secrets.HUB_TOKEN || github.token }}
+          GITHUB_TOKEN: ${{ github.token }}
+        run: gleanyard hub run --hub-repo "${{ github.repository }}"
+      - run: gleanyard hub build --title "{{hub}}"
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+      - id: deploy
+        uses: actions/deploy-pages@v4
