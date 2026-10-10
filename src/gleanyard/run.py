@@ -17,12 +17,14 @@ import httpx
 from pydantic import BaseModel
 
 from gleanyard.cache import RawCache
-from gleanyard.collect import OutputRecord, extract
-from gleanyard.config import SourceConfig
-from gleanyard.errors import SourceError
+from gleanyard.collect import Extraction, OutputRecord, extract
+from gleanyard.config import Delivery, SelectorsExtract, SourceConfig
+from gleanyard.errors import SourceError, StructureChanged
 from gleanyard.export import public_record
+from gleanyard.extract.selectors import SelectorSchema
 from gleanyard.fetch import Fetcher, Response
 from gleanyard.project import Project
+from gleanyard.readers import read_sitemap
 from gleanyard.storage import LocalObjectStore
 
 
@@ -60,15 +62,16 @@ def collect_source(
     store = _store(project)
     cache = RawCache(store)
     try:
+        selectors = _selector_schema(project, source)
         if from_cache:
-            response = _cached_response(cache, source)
+            responses = _cached_responses(cache, source)
         else:
             fetcher = Fetcher(
                 source, user_agent=project.config.user_agent, cache=cache, client=client
             )
-            response = fetcher.get(str(source.url))
+            responses = _fetch(fetcher, source)
             manifest = fetcher.finish()
-        result = extract(source, project.schema, response, today=today)
+        result = _extract_all(project, source, responses, today, selectors)
     except FileNotFoundError as error:
         return SourceRun(source_id=source.id, ok=False, error_kind="no_cache", error=str(error))
     except SourceError as error:
@@ -94,12 +97,65 @@ def collect_source(
     )
 
 
-def _cached_response(cache: RawCache, source: SourceConfig) -> Response:
+def _selector_schema(project: Project, source: SourceConfig) -> SelectorSchema | None:
+    if not isinstance(source.extract, SelectorsExtract):
+        return None
+    path = project.root / source.extract.selectors
+    try:
+        return SelectorSchema.model_validate_json(path.read_text(encoding="utf-8"))
+    except ValueError as error:
+        raise StructureChanged(
+            source.id, f"selector file {path.name} is invalid: {error}"
+        ) from error
+
+
+def _fetch(fetcher: Fetcher, source: SourceConfig) -> list[Response]:
+    """The source URL; for a sitemap, the sitemap followed by each page it lists."""
+    first = fetcher.get(str(source.url))
+    if source.delivery != Delivery.SITEMAP:
+        return [first]
+    urls = read_sitemap(source, first.body, source.reader_options)
+    return [first, *(fetcher.get(url) for url in urls)]
+
+
+def _cached_responses(cache: RawCache, source: SourceConfig) -> list[Response]:
     manifest = cache.latest_manifest(source.id)
     if manifest is None or not manifest.responses:
         raise FileNotFoundError(f"{source.id}: no cached run to re-extract")
-    cached = manifest.responses[-1]
-    return Response(**cached.model_dump(), body=cache.get_body(cached.sha256), from_cache=True)
+    cached = manifest.responses if source.delivery == Delivery.SITEMAP else manifest.responses[-1:]
+    return [
+        Response(**item.model_dump(), body=cache.get_body(item.sha256), from_cache=True)
+        for item in cached
+    ]
+
+
+def _extract_all(
+    project: Project,
+    source: SourceConfig,
+    responses: list[Response],
+    today: date | None,
+    selectors: SelectorSchema | None,
+) -> Extraction:
+    """Extract every page; a sitemap's first response is the index, not a page."""
+    assert project.schema is not None
+    pages = responses[1:] if source.delivery == Delivery.SITEMAP else responses
+    merged = Extraction()
+    seen: set[str] = set()
+    for page in pages:
+        result = extract(
+            source,
+            project.schema,
+            page,
+            today=today,
+            selectors=selectors,
+            base_url=page.url if source.delivery == Delivery.SITEMAP else None,
+        )
+        for record in result.records:
+            if record.id not in seen:
+                seen.add(record.id)
+                merged.records.append(record)
+        merged.rejections.extend(result.rejections)
+    return merged
 
 
 def load_records(project: Project, source_id: str) -> list[OutputRecord]:

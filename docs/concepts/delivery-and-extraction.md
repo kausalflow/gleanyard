@@ -17,8 +17,8 @@ their source file; the schema, validation and export are shared.
 | Delivery | Extraction modes | Status |
 | --- | --- | --- |
 | `ical`, `json`, `rss`, `csv` | `fields` | Available |
-| `sitemap` | lists page URLs for the document modes | Reader available |
-| `html` | `jsonld`, `selectors`, `llm` | Planned |
+| `sitemap` | `jsonld`, `selectors`: each listed page is fetched and extracted | `jsonld`, `selectors` available |
+| `html` | `jsonld`, `selectors`, `llm` | `jsonld`, `selectors` available; `llm` planned |
 | `pdf` | `llm` | Planned |
 
 `gleanyard validate` rejects a combination that does not fit.
@@ -52,6 +52,53 @@ Dot paths reach into nested JSON: `offers.0.price` is the price of the first off
 - **JSON**: the records at `items_path`, each an object.
 - **CSV**: one record per row, keyed by the header.
 - **RSS and Atom**: `title`, `link`, `description`, `category` and the other element names.
+
+## `jsonld`: pages with schema.org markup
+
+Many event, product and organisation pages publish `<script type="application/ld+json">`
+for search engines. List the `@type`s to read; nodes are found inside arrays, `@graph` and
+nested objects, and a broken block is skipped without hiding the others.
+
+```yaml
+delivery: html
+extract:
+  mode: jsonld
+  types: [Event]
+  map:
+    price: offers.price      # optional: only for fields whose name differs
+```
+
+A schema field with no `map` entry is looked up by its own name and then its `aliases`, so
+`aliases: [startDate]` on `start_date` is enough. A list is read at its first element unless
+you give an index, and `{"@value": ...}`, `{"name": ...}` and `{"url": ...}` wrappers are
+unwrapped.
+
+## `selectors`: CSS selectors, no model
+
+`extract.selectors` points to a crawl4ai-style JSON CSS schema in `mappings/`. The same file
+can be drafted by crawl4ai at setup and then runs here with plain HTML parsing.
+
+```json
+{
+  "baseSelector": "table.table tr",
+  "fields": [
+    {"name": "title", "selector": "td:nth-child(4)"},
+    {"name": "source_url", "selector": "a", "type": "attribute", "attribute": "href"}
+  ]
+}
+```
+
+`baseSelector` matches one element per candidate record. Field types are `text` (default),
+`attribute`, `html`, `regex` (`pattern`, first group), `list`, `nested` and `nested_list`;
+a field may have `default` and `transform` (`lowercase`, `uppercase`, `strip`). Header rows
+and other rows that fail the schema land in the review file, not in the records.
+
+## Sitemaps
+
+With `delivery: sitemap` the source URL is a sitemap. Gleanyard fetches each listed page
+(filtered by `reader.include`, capped by `reader.max_pages` and the fetch limits) and
+extracts it with `jsonld` or `selectors`. Relative links resolve against the page's own URL,
+and a record found on several pages is kept once.
 
 ## The extraction mode is pinned
 

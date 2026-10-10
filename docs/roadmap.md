@@ -8,10 +8,10 @@ Project schema and normalizers, strict source config, `validate`, the bounded fe
 content-addressed raw cache, feed readers (iCal, JSON, RSS/Atom, CSV, sitemap), `fields`
 extraction, `collect`, `collect --from-cache` and the rights-filtered `export`.
 
-## 2. Extraction modes
+## 2. Extraction modes (in progress)
 
-`jsonld` for pages with schema.org markup, `selectors` using crawl4ai-style JSON CSS
-schemas, `llm` with per-run cost and page caps, and PDF delivery. Per-source health
+Done: `jsonld` for pages with schema.org markup and `selectors` using crawl4ai-style JSON
+CSS schemas, on single pages and sitemaps. Still to come: `llm` with per-run cost and page caps, and PDF delivery. Per-source health
 (`status.json`) with expected-empty handling. Pages that need paging or filters bring
 `pagination_changed` and `filter_ignored` errors.
 
