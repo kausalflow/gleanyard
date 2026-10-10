@@ -92,6 +92,43 @@ class FetchLimits(StrictModel):
     timeout_seconds: float = Field(default=30, gt=0, le=300)
 
 
+class SourceFilter(StrictModel):
+    """What the source's own query filter is meant to leave in, checked on the result.
+
+    A URL like ``?city=aachen`` can silently stop working and return everything. The
+    check reads the filtered schema field on every extracted record.
+    """
+
+    field: str = Field(description="Schema field the URL filter constrains, e.g. city.")
+    one_of: list[str | int | float | bool] = Field(
+        min_length=1, description="Values that count as inside the filter (strings ignore case)."
+    )
+    max_outside_share: float = Field(
+        default=0.2,
+        ge=0,
+        le=1,
+        description="Fail with filter_ignored when more of the records fall outside; "
+        "fewer are moved to the review file.",
+    )
+
+
+class Pagination(StrictModel):
+    """Walk a source that serves its records in pages, via one query parameter."""
+
+    param: str = Field(description="Query parameter that selects the page, e.g. page or offset.")
+    start: int = Field(default=1, ge=0, description="Value of the parameter on the first page.")
+    step: int = Field(default=1, ge=1, description="1 for page numbers, the page size for offsets.")
+    max_pages: int = Field(
+        default=10,
+        ge=2,
+        le=200,
+        description="Pages to fetch; a source still returning new records after this fails.",
+    )
+
+
+PAGED_DELIVERIES = frozenset({Delivery.HTML, Delivery.JSON, Delivery.RSS, Delivery.CSV})
+
+
 class _ExtractBase(StrictModel):
     defaults: dict[str, Any] = Field(
         default_factory=dict,
@@ -154,6 +191,8 @@ class SourceConfig(StrictModel):
         default_factory=dict, description="Options for the delivery reader."
     )
     extract: Extract
+    filter: SourceFilter | None = None
+    pagination: Pagination | None = None
     fetch: FetchLimits = Field(default_factory=FetchLimits)
     expect_empty: Literal["never", "seasonal"] = Field(
         default="never", description="seasonal: an empty run is healthy, not a failure."
@@ -171,6 +210,16 @@ class SourceConfig(StrictModel):
             raise ValueError(
                 f"extract mode {self.extract.mode!r} does not fit delivery {self.delivery.value!r};"
                 f" use one of: {', '.join(sorted(allowed))}"
+            )
+        if self.pagination is not None and self.delivery not in PAGED_DELIVERIES:
+            allowed = ", ".join(sorted(d.value for d in PAGED_DELIVERIES))
+            raise ValueError(
+                f"pagination does not fit delivery {self.delivery.value!r}; use one of: {allowed}"
+            )
+        if self.pagination is not None and self.pagination.max_pages + 1 > self.fetch.max_requests:
+            raise ValueError(
+                f"pagination.max_pages {self.pagination.max_pages} needs fetch.max_requests of "
+                f"at least {self.pagination.max_pages + 1} (robots.txt counts as a request)"
             )
         self.reader = READERS[self.delivery].model_validate(self.reader).model_dump()
         return self
