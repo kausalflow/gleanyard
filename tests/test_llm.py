@@ -184,3 +184,69 @@ def test_pydantic_ai_client_with_the_test_model():
 
 def test_model_error_without_extra_is_clear():
     assert ModelError("s", "x").kind.value == "model"
+
+
+def make_pdf(lines: list[str]) -> bytes:
+    """A one-page PDF with a text layer, built by hand so no PDF writer is needed."""
+    stream = "BT /F1 12 Tf 14 TL 50 700 Td " + " T* ".join(f"({line}) Tj" for line in lines) + " ET"
+    objects = [
+        "<< /Type /Catalog /Pages 2 0 R >>",
+        "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+        "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R "
+        "/Resources << /Font << /F1 5 0 R >> >> >>",
+        f"<< /Length {len(stream)} >>\nstream\n{stream}\nendstream",
+        "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>",
+    ]
+    out = b"%PDF-1.4\n"
+    offsets = []
+    for number, body in enumerate(objects, 1):
+        offsets.append(len(out))
+        out += f"{number} 0 obj\n{body}\nendobj\n".encode()
+    xref = len(out)
+    out += f"xref\n0 {len(objects) + 1}\n0000000000 65535 f \n".encode()
+    out += b"".join(f"{offset:010d} 00000 n \n".encode() for offset in offsets)
+    out += (
+        f"trailer\n<< /Size {len(objects) + 1} /Root 1 0 R >>\nstartxref\n{xref}\n%%EOF\n".encode()
+    )
+    return out
+
+
+def pdf_project(tmp_path):
+    import yaml
+
+    source = llm_source()
+    source["delivery"] = "pdf"
+    source["url"] = "https://hof.example/programm.pdf"
+    root = make_project(tmp_path / "p", source)
+    path = root / "sources" / "s.yaml"
+    document = yaml.safe_load(path.read_text())
+    document["rights"]["allowed_actions"]["send_to_model"] = True
+    path.write_text(yaml.safe_dump(document))
+    return load_project(root)
+
+
+def test_pdf_text_is_read_and_sent_to_the_model(tmp_path):
+    pytest.importorskip("pypdf")
+    project = pdf_project(tmp_path)
+    pdf = make_pdf(["Programm 2026", "Apple day on 15 October 2026", "Bread baking 12 November"])
+    client = FakeClient()
+    run = collect_source(
+        project,
+        project.sources[0],
+        client=site({"/programm.pdf": pdf}),
+        llm_client=client,
+        today=TODAY,
+    )
+    assert run.ok and run.records == 2
+    assert "Apple day on 15 October 2026" in client.prompts[0]
+
+
+def test_pdf_without_text_or_not_a_pdf_is_a_structure_change(tmp_path):
+    pytest.importorskip("pypdf")
+    from gleanyard.errors import StructureChanged
+    from gleanyard.extract.llm import pdf_text
+
+    with pytest.raises(StructureChanged, match="no text layer"):
+        pdf_text(make_pdf([]), "s", 1000)
+    with pytest.raises(StructureChanged, match="not a readable PDF"):
+        pdf_text(b"<html>not a pdf</html>", "s", 1000)

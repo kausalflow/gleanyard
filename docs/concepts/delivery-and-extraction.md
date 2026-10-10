@@ -19,7 +19,7 @@ their source file; the schema, validation and export are shared.
 | `ical`, `json`, `rss`, `csv` | `fields` | Available |
 | `sitemap` | `jsonld`, `selectors`, `llm`: each listed page is fetched and extracted | Available |
 | `html` | `jsonld`, `selectors`, `llm` | Available |
-| `pdf` | `llm` | Planned |
+| `pdf` | `llm` | Available |
 
 `gleanyard validate` rejects a combination that does not fit.
 
@@ -116,6 +116,9 @@ rights:
   allowed_actions: {private_store: true, normalize: true, send_to_model: true}
 ```
 
+- **PDF**: with `delivery: pdf` the file's text layer is sent to the model (`pip install
+  "gleanyard[pdf]"`). A scanned PDF without a text layer fails with `structure_changed`;
+  there is no OCR.
 - **Install**: `pip install "gleanyard[llm]"` and set the provider's API key (for example
   `ANTHROPIC_API_KEY`) in the environment of the scheduled run.
 - **Rights**: page text leaves your repo, so the source must allow `send_to_model`.
