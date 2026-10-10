@@ -14,7 +14,7 @@ from datetime import date
 from pathlib import Path
 
 import httpx
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from gleanyard.cache import RawCache
 from gleanyard.collect import Extraction, OutputRecord, extract
@@ -36,6 +36,8 @@ class SourceRun(BaseModel):
     error_kind: str | None = None
     error: str | None = None
     from_cache: bool = False
+    field_fill_rates: dict[str, float] = Field(default_factory=dict)
+    pages: int = 0
 
 
 def _store(project: Project) -> LocalObjectStore:
@@ -94,6 +96,8 @@ def collect_source(
         rejections=len(result.rejections),
         error_kind=None if healthy else "empty",
         from_cache=from_cache,
+        field_fill_rates=result.field_fill_rates,
+        pages=len(responses),
     )
 
 

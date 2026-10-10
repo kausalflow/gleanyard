@@ -30,6 +30,10 @@ the source's last-good baseline.
 Exit code 0 if every selected source is healthy, 1 if any failed, 2 if the project does not
 validate.
 
+## `gleanyard status [PROJECT] [--json]`
+
+Shows the health report written by the last `collect` (see [Health and status.json](../concepts/status.md)). Exits 1 if any source is `degraded` or `failing`, or if no report exists yet.
+
 ## `gleanyard export [PROJECT] [--json]`
 
 Writes the rights-filtered public export, by default `exports/records.jsonl` (set `export`
@@ -51,6 +55,7 @@ sources: sources
 user_agent: "my-project (+https://example.org/contact)"
 storage: {root: data}
 export: exports/records.jsonl
+status: status.json                 # health report, read by the status hub
 rights_policy:
   permitted_tiers: [open, open_attribution, licensed, facts_only, link_only]
   require_reviewed_permission: true
