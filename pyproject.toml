@@ -29,8 +29,11 @@ gleanyard = "gleanyard.cli:app"
 [project.urls]
 Repository = "https://github.com/kausalflow/gleanyard"
 
+[project.optional-dependencies]
+llm = ["pydantic-ai>=1"]
+
 [dependency-groups]
-dev = ["pytest>=8", "ruff>=0.6"]
+dev = ["pytest>=8", "ruff>=0.6", "pydantic-ai-slim>=1"]
 docs = ["zensical"]
 
 [build-system]

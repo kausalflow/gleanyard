@@ -34,6 +34,8 @@ class SourceStatus(BaseModel):
     previous_records: int | None = None
     rejections: int = 0
     pages: int = 0
+    model_calls: int = 0
+    cost_eur: float = 0.0
     field_fill_rates: dict[str, float] = Field(default_factory=dict)
     error_kind: str | None = None
     error: str | None = None
@@ -112,6 +114,8 @@ def _from_run(
         previous_records=last_count,
         rejections=run.rejections,
         pages=run.pages,
+        model_calls=run.model_calls,
+        cost_eur=run.cost_eur,
         field_fill_rates=run.field_fill_rates,
         error_kind=run.error_kind,
         error=run.error,

@@ -13,9 +13,17 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
-from gleanyard.config import FieldsExtract, JsonLdExtract, SelectorsExtract, SourceConfig
+from gleanyard.config import (
+    FieldsExtract,
+    JsonLdExtract,
+    LlmExtract,
+    SelectorsExtract,
+    SourceConfig,
+)
+from gleanyard.errors import ModelError
 from gleanyard.extract.fields import map_item
 from gleanyard.extract.jsonld import jsonld_nodes, map_node
+from gleanyard.extract.llm import LlmSession
 from gleanyard.extract.selectors import SelectorSchema, run_selectors
 from gleanyard.fetch import Response
 from gleanyard.readers import read_items
@@ -67,6 +75,7 @@ def mapped_values(
     response: Response,
     today: date | None,
     selectors: SelectorSchema | None,
+    llm: LlmSession | None = None,
 ) -> list[dict[str, Any]]:
     """Run the source's pinned mode over one response; one dict per candidate record."""
     mode = source.extract
@@ -80,7 +89,16 @@ def mapped_values(
             raise ValueError(f"{source.id}: the selector mapping was not loaded")
         items = run_selectors(source.id, response.body, selectors)
         return [{**mode.defaults, **item} for item in items]
+    if isinstance(mode, LlmExtract):
+        if llm is None:
+            raise ModelError(source.id, "no model session available")
+        items = llm.items(source, schema, response)
+        return [{**mode.defaults, **_present(item)} for item in items]
     raise NotImplementedError(f"extract mode {mode.mode!r} is not implemented yet")
+
+
+def _present(item: dict[str, Any]) -> dict[str, Any]:
+    return {key: value for key, value in item.items() if value not in (None, "", [])}
 
 
 def extract(
@@ -89,13 +107,14 @@ def extract(
     response: Response,
     today: date | None = None,
     selectors: SelectorSchema | None = None,
+    llm: LlmSession | None = None,
     base_url: str | None = None,
 ) -> Extraction:
     """Extract one response with the source's pinned mode."""
     result = Extraction()
     base_url = base_url or str(source.homepage or source.url)
     seen: set[str] = set()
-    for values in mapped_values(source, schema, response, today, selectors):
+    for values in mapped_values(source, schema, response, today, selectors, llm):
         validation = schema.validate_record(
             values, source_id=source.id, base_url=base_url, today=today
         )

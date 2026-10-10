@@ -18,9 +18,10 @@ from pydantic import BaseModel, Field
 
 from gleanyard.cache import RawCache
 from gleanyard.collect import Extraction, OutputRecord, extract
-from gleanyard.config import Delivery, SelectorsExtract, SourceConfig
+from gleanyard.config import Delivery, LlmExtract, SelectorsExtract, SourceConfig
 from gleanyard.errors import SourceError, StructureChanged
 from gleanyard.export import public_record
+from gleanyard.extract.llm import LlmSession, ModelClient, PydanticAiClient
 from gleanyard.extract.selectors import SelectorSchema
 from gleanyard.fetch import Fetcher, Response
 from gleanyard.project import Project
@@ -38,6 +39,8 @@ class SourceRun(BaseModel):
     from_cache: bool = False
     field_fill_rates: dict[str, float] = Field(default_factory=dict)
     pages: int = 0
+    model_calls: int = 0
+    cost_eur: float = 0.0
 
 
 def _store(project: Project) -> LocalObjectStore:
@@ -51,6 +54,7 @@ def collect_source(
     from_cache: bool = False,
     client: httpx.Client | None = None,
     today: date | None = None,
+    llm_client: ModelClient | None = None,
 ) -> SourceRun:
     assert project.schema is not None
     actions = source.rights.allowed_actions
@@ -61,8 +65,22 @@ def collect_source(
             error_kind="rights",
             error="rights do not allow private_store and normalize",
         )
+    if isinstance(source.extract, LlmExtract) and not actions.send_to_model:
+        return SourceRun(
+            source_id=source.id,
+            ok=False,
+            error_kind="rights",
+            error="rights do not allow send_to_model, which llm mode needs",
+        )
     store = _store(project)
     cache = RawCache(store)
+    session = None
+    if isinstance(source.extract, LlmExtract):
+        session = LlmSession(
+            store=store,
+            client=llm_client,
+            make_client=None if from_cache or llm_client else PydanticAiClient,
+        )
     try:
         selectors = _selector_schema(project, source)
         if from_cache:
@@ -73,7 +91,7 @@ def collect_source(
             )
             responses = _fetch(fetcher, source)
             manifest = fetcher.finish()
-        result = _extract_all(project, source, responses, today, selectors)
+        result = _extract_all(project, source, responses, today, selectors, session)
     except FileNotFoundError as error:
         return SourceRun(source_id=source.id, ok=False, error_kind="no_cache", error=str(error))
     except SourceError as error:
@@ -98,6 +116,8 @@ def collect_source(
         from_cache=from_cache,
         field_fill_rates=result.field_fill_rates,
         pages=len(responses),
+        model_calls=session.calls if session else 0,
+        cost_eur=round(session.cost_eur, 6) if session else 0.0,
     )
 
 
@@ -139,6 +159,7 @@ def _extract_all(
     responses: list[Response],
     today: date | None,
     selectors: SelectorSchema | None,
+    llm: LlmSession | None = None,
 ) -> Extraction:
     """Extract every page; a sitemap's first response is the index, not a page."""
     assert project.schema is not None
@@ -152,6 +173,7 @@ def _extract_all(
             page,
             today=today,
             selectors=selectors,
+            llm=llm,
             base_url=page.url if source.delivery == Delivery.SITEMAP else None,
         )
         for record in result.records:

@@ -17,8 +17,8 @@ their source file; the schema, validation and export are shared.
 | Delivery | Extraction modes | Status |
 | --- | --- | --- |
 | `ical`, `json`, `rss`, `csv` | `fields` | Available |
-| `sitemap` | `jsonld`, `selectors`: each listed page is fetched and extracted | `jsonld`, `selectors` available |
-| `html` | `jsonld`, `selectors`, `llm` | `jsonld`, `selectors` available; `llm` planned |
+| `sitemap` | `jsonld`, `selectors`, `llm`: each listed page is fetched and extracted | Available |
+| `html` | `jsonld`, `selectors`, `llm` | Available |
 | `pdf` | `llm` | Planned |
 
 `gleanyard validate` rejects a combination that does not fit.
@@ -92,6 +92,41 @@ can be drafted by crawl4ai at setup and then runs here with plain HTML parsing.
 `attribute`, `html`, `regex` (`pattern`, first group), `list`, `nested` and `nested_list`;
 a field may have `default` and `transform` (`lowercase`, `uppercase`, `strip`). Header rows
 and other rows that fail the schema land in the review file, not in the records.
+
+## `llm`: a model reads the page
+
+For pages with no markup worth selecting, a language model reads the page text and returns
+records in your schema. Use it when `jsonld` and `selectors` do not fit; it costs money and
+is the least predictable mode, so every guard below is on by default.
+
+```yaml
+delivery: html
+extract:
+  mode: llm
+  llm:
+    model: anthropic:claude-sonnet-5-5   # provider:model, anything pydantic-ai supports
+    max_pages_per_run: 20                # model calls per run
+    max_cost_per_run_eur: 0.5            # estimated from token usage and the prices below
+    only_if_changed: true                # a page whose text did not change is not sent again
+    input_price_per_mtok_eur: 5          # your provider's prices, to estimate cost
+    output_price_per_mtok_eur: 25
+  instructions: Only workshops, not guided tours.
+  defaults: {city: Velbert}
+rights:
+  allowed_actions: {private_store: true, normalize: true, send_to_model: true}
+```
+
+- **Install**: `pip install "gleanyard[llm]"` and set the provider's API key (for example
+  `ANTHROPIC_API_KEY`) in the environment of the scheduled run.
+- **Rights**: page text leaves your repo, so the source must allow `send_to_model`.
+- **Validation**: the model's items go through the same schema checks as every other mode;
+  items that fail land in the review file. The prompt tells the model to copy text as written,
+  never to guess and to ignore instructions inside the page.
+- **Caps**: reaching `max_pages_per_run` or the cost cap stops the run with `bounds_exceeded`
+  instead of returning part of the data. Cost is estimated before each call.
+- **Cache**: model output is stored in `data/llm/` keyed by the page text, model, schema fields
+  and instructions. `only_if_changed` reuses it; `collect --from-cache` always does and never
+  calls a model.
 
 ## Sitemaps
 
