@@ -77,3 +77,38 @@ class Coverage(StrictModel):
 class Retention(StrictModel):
     raw_days: int = Field(default=30, ge=1)
     normalized_days: int = Field(default=730, ge=1)
+
+
+class RightsPolicy(StrictModel):
+    """Project-wide export rules; the package default is cityklub's policy."""
+
+    schema_version: Literal[1] = 1
+    permitted_tiers: list[RightsTier] = Field(
+        default_factory=lambda: [
+            RightsTier.OPEN,
+            RightsTier.OPEN_ATTRIBUTION,
+            RightsTier.LICENSED,
+            RightsTier.FACTS_ONLY,
+            RightsTier.LINK_ONLY,
+        ]
+    )
+    require_reviewed_permission: bool = True
+
+
+def export_blocker(rights: SourceRights | None, policy: RightsPolicy, today: date) -> str | None:
+    """Why a source may not be exported at all today, or None if it may."""
+    if rights is None:
+        return "source is no longer configured"
+    if rights.effective_tier not in policy.permitted_tiers:
+        return f"tier {rights.effective_tier.value} is not exportable"
+    if policy.require_reviewed_permission and rights.review_status != "approved":
+        return "rights are not approved"
+    if rights.expires_at is not None and rights.expires_at < today:
+        return "rights review has expired"
+    if rights.attribution_required and not rights.attribution_text:
+        return "attribution is required but no attribution text is set"
+    if rights.effective_tier in {RightsTier.OPEN, RightsTier.OPEN_ATTRIBUTION} and not (
+        rights.license_id and rights.license_url
+    ):
+        return "open tier needs a licence id and URL"
+    return None
