@@ -13,8 +13,10 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
-from gleanyard.config import FieldsExtract, SourceConfig
+from gleanyard.config import FieldsExtract, JsonLdExtract, SelectorsExtract, SourceConfig
 from gleanyard.extract.fields import map_item
+from gleanyard.extract.jsonld import jsonld_nodes, map_node
+from gleanyard.extract.selectors import SelectorSchema, run_selectors
 from gleanyard.fetch import Response
 from gleanyard.readers import read_items
 from gleanyard.schema import FieldIssue, ProjectSchema
@@ -59,20 +61,41 @@ class Extraction(BaseModel):
         return {name: count / len(self.records) for name, count in sorted(counts.items())}
 
 
+def mapped_values(
+    source: SourceConfig,
+    schema: ProjectSchema,
+    response: Response,
+    today: date | None,
+    selectors: SelectorSchema | None,
+) -> list[dict[str, Any]]:
+    """Run the source's pinned mode over one response; one dict per candidate record."""
+    mode = source.extract
+    if isinstance(mode, FieldsExtract):
+        return [map_item(item, mode) for item in read_items(source, response.body, today=today)]
+    if isinstance(mode, JsonLdExtract):
+        nodes = jsonld_nodes(source.id, response.body, mode.types)
+        return [map_node(node, schema, mode.map, mode.defaults) for node in nodes]
+    if isinstance(mode, SelectorsExtract):
+        if selectors is None:
+            raise ValueError(f"{source.id}: the selector mapping was not loaded")
+        items = run_selectors(source.id, response.body, selectors)
+        return [{**mode.defaults, **item} for item in items]
+    raise NotImplementedError(f"extract mode {mode.mode!r} is not implemented yet")
+
+
 def extract(
     source: SourceConfig,
     schema: ProjectSchema,
     response: Response,
     today: date | None = None,
+    selectors: SelectorSchema | None = None,
+    base_url: str | None = None,
 ) -> Extraction:
     """Extract one response with the source's pinned mode."""
-    if not isinstance(source.extract, FieldsExtract):
-        raise NotImplementedError(f"extract mode {source.extract.mode!r} is not implemented yet")
     result = Extraction()
-    base_url = str(source.homepage or source.url)
+    base_url = base_url or str(source.homepage or source.url)
     seen: set[str] = set()
-    for item in read_items(source, response.body, today=today):
-        values = map_item(item, source.extract)
+    for values in mapped_values(source, schema, response, today, selectors):
         validation = schema.validate_record(
             values, source_id=source.id, base_url=base_url, today=today
         )
