@@ -29,6 +29,7 @@ Repository = "https://github.com/kausalflow/gleanyard"
 
 [dependency-groups]
 dev = ["pytest>=8", "ruff>=0.6"]
+docs = ["zensical"]
 
 [build-system]
 requires = ["hatchling>=1.27"]
