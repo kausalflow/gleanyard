@@ -39,6 +39,11 @@ Shows the health report written by the last `collect` (see [Health and status.js
 Creates a collection project in an empty (or missing) directory from the bundled template; see
 [the repo template](../concepts/repo-template.md).
 
+## `gleanyard hub run [--config hub.yaml] [--hub-repo OWNER/NAME] [--state PATH] [--dry-run] [--json]`
+
+Reads every repo in `hub.yaml`, writes the dashboard snapshot, and opens or closes alert issues
+in the hub repo (see [the status hub](../concepts/status-hub.md)). Needs `GH_TOKEN`.
+
 ## `gleanyard probe URL [--root DIR] [--json]`
 
 Looks at a site without a model: reads `robots.txt` and the page (two requests), finds
