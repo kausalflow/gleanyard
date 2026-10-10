@@ -44,6 +44,14 @@ Creates a collection project in an empty (or missing) directory from the bundled
 Reads every repo in `hub.yaml`, writes the dashboard snapshot, and opens or closes alert issues
 in the hub repo (see [the status hub](../concepts/status-hub.md)). Needs `GH_TOKEN`.
 
+## `gleanyard hub build [--state PATH] [--out DIR] [--title TEXT]`
+
+Renders the snapshot from `hub run` as a static dashboard in `DIR` (default `site/`).
+
+## `gleanyard hub init DIR [--repo OWNER/NAME]... [--name NAME]`
+
+Creates the status hub repo from the bundled template.
+
 ## `gleanyard probe URL [--root DIR] [--json]`
 
 Looks at a site without a model: reads `robots.txt` and the page (two requests), finds

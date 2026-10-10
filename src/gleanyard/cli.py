@@ -15,9 +15,10 @@ from gleanyard.config import ProjectConfig, SourceConfig
 from gleanyard.errors import ConfigError, SourceError
 from gleanyard.hub.alerts import compute_alerts, sync_issues, weekly_digest
 from gleanyard.hub.config import load_hub_config
+from gleanyard.hub.dashboard import render_dashboard
 from gleanyard.hub.github import HttpGitHub
-from gleanyard.hub.state import collect_state
-from gleanyard.init import init_project
+from gleanyard.hub.state import HubState, collect_state
+from gleanyard.init import init_hub, init_project
 from gleanyard.probe import probe as probe_url
 from gleanyard.project import load_project
 from gleanyard.run import collect_source, export_project
@@ -370,3 +371,41 @@ def hub_run(
             f"alerts: {len(alerts)} active, {len(result.opened)} opened, "
             f"{len(result.closed)} closed"
         )
+
+
+@hub_app.command("build")
+def hub_build(
+    state_path: Annotated[Path, typer.Option("--state", help="Snapshot from `hub run`.")] = Path(
+        "data/state.json"
+    ),
+    out: Annotated[Path, typer.Option(help="Output directory for the static site.")] = Path("site"),
+    title: Annotated[str, typer.Option(help="Page title.")] = "Collection status",
+) -> None:
+    """Render the snapshot as a static dashboard page for GitHub Pages."""
+    try:
+        state = HubState.model_validate_json(state_path.read_text(encoding="utf-8"))
+    except (OSError, ValueError) as error:
+        typer.echo(f"cannot read {state_path}: {error}; run `gleanyard hub run` first", err=True)
+        raise typer.Exit(2) from error
+    out.mkdir(parents=True, exist_ok=True)
+    (out / "index.html").write_text(render_dashboard(state, title), encoding="utf-8")
+    (out / "state.json").write_text(state.model_dump_json(indent=2) + "\n", encoding="utf-8")
+    typer.echo(f"wrote {out / 'index.html'}")
+
+
+@hub_app.command("init")
+def hub_init(
+    directory: Annotated[Path, typer.Argument(help="New hub directory (empty or missing).")],
+    repo: Annotated[
+        list[str] | None, typer.Option("--repo", help="Collection repo owner/name (repeatable).")
+    ] = None,
+    name: Annotated[str | None, typer.Option(help="Hub name; default: the directory name.")] = None,
+) -> None:
+    """Create the status hub repo: hub.yaml, a workflow, and a Pages dashboard."""
+    hub = name or directory.resolve().name.lower().replace("_", "-")
+    try:
+        written = init_hub(directory, hub, repo or [])
+    except ConfigError as error:
+        typer.echo(str(error), err=True)
+        raise typer.Exit(1) from error
+    typer.echo(f"created hub {hub!r} in {directory} ({len(written)} files)")

@@ -257,3 +257,62 @@ def test_cli_hub_run_dry_run(tmp_path, monkeypatch):
     summary = json.loads(result.output)
     assert summary["alerts"] == ["o/a:down:failing"] and github.log == []
     assert json.loads((tmp_path / "state.json").read_text())["repos"][0]["repo"] == "o/a"
+
+
+def sample_state():
+    pull = PullRequest(
+        number=4,
+        title="Repair <b>x</b>",
+        url="https://github.com/o/a/pull/4",
+        created_at=NOW - timedelta(days=3),
+        labels=["repair"],
+    )
+    github = FakeGitHub(
+        files={
+            "o/a": status(
+                source("fine"),
+                source("down", "failing", error_kind="transport", error="<script>x</script>"),
+            ),
+            "o/b": status(source("ok")),
+        },
+        pulls={"o/a": [pull]},
+    )
+    return collect_state(config(), github, NOW)
+
+
+def test_dashboard_is_escaped_static_html_with_levels():
+    from gleanyard.hub.dashboard import render_dashboard
+
+    page = render_dashboard(sample_state(), "Status <hub>")
+    assert "<script" not in page.replace("<script>x", "")  # no scripts of ours
+    assert "&lt;script&gt;x&lt;/script&gt;" in page and "<b>x</b>" not in page
+    assert "Status &lt;hub&gt;" in page
+    assert "class='dot red'" in page and "class='dot green'" in page
+    assert page.index("o/a") < page.index("o/b")
+    assert "1 red" in page and "1 green" in page and "3 day(s)" in page
+    assert "<details open>" in page  # a repo that needs attention starts open
+
+
+def test_cli_hub_build_and_init(tmp_path):
+    state = sample_state()
+    (tmp_path / "state.json").write_text(state.model_dump_json())
+    result = runner.invoke(
+        app, ["hub", "build", "--state", str(tmp_path / "state.json"), "--out", str(tmp_path / "s")]
+    )
+    assert result.exit_code == 0, result.output
+    assert "o/a" in (tmp_path / "s" / "index.html").read_text()
+    missing = runner.invoke(app, ["hub", "build", "--state", str(tmp_path / "none.json")])
+    assert missing.exit_code == 2
+
+    root = tmp_path / "collection-status"
+    created = runner.invoke(app, ["hub", "init", str(root), "--repo", "o/a", "--repo", "o/b"])
+    assert created.exit_code == 0, created.output
+    assert load_hub_config(root / "hub.yaml").repos == ["o/a", "o/b"]
+    import yaml
+
+    workflow = yaml.safe_load((root / ".github/workflows/hub.yml").read_text())
+    runs = [step.get("run", "") for step in workflow["jobs"]["hub"]["steps"]]
+    assert any("gleanyard hub run" in run for run in runs)
+    assert any("gleanyard hub build" in run for run in runs)
+    assert (root / ".gitignore").exists() and "{{" not in (root / "README.md").read_text()
+    assert runner.invoke(app, ["hub", "init", str(root)]).exit_code == 1  # not empty
