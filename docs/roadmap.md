@@ -25,8 +25,9 @@ A repo template whose `CLAUDE.md` tells an AI assistant how to research sources,
 health checks fail. Every change arrives as a pull request. crawl4ai drafts selector
 mappings at setup and repair only and never runs in scheduled collection.
 
-## 4. Status hub
+## 4. Status hub (in progress)
 
+Done: `gleanyard hub run` reads the repos and keeps one issue per active problem. 
 A central repo that reads each project's `status.json`, publishes a dashboard on GitHub
 Pages, and opens GitHub issues on changes: a source starts failing, record counts drop, a
 scheduled run is missed, or a setup or repair PR waits too long.

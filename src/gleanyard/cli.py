@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 from typing import Annotated
 from urllib.parse import urlsplit
@@ -12,6 +13,10 @@ import typer
 from gleanyard import __version__
 from gleanyard.config import ProjectConfig, SourceConfig
 from gleanyard.errors import ConfigError, SourceError
+from gleanyard.hub.alerts import compute_alerts, sync_issues, weekly_digest
+from gleanyard.hub.config import load_hub_config
+from gleanyard.hub.github import HttpGitHub
+from gleanyard.hub.state import collect_state
 from gleanyard.init import init_project
 from gleanyard.probe import probe as probe_url
 from gleanyard.project import load_project
@@ -22,6 +27,8 @@ from gleanyard.status import build_status, load_status, write_status
 from gleanyard.tryout import try_source
 
 app = typer.Typer(no_args_is_help=True, add_completion=False, help=__doc__)
+hub_app = typer.Typer(no_args_is_help=True, help="The status hub: watch many collection repos.")
+app.add_typer(hub_app, name="hub")
 
 JsonFlag = Annotated[bool, typer.Option("--json", help="Print machine-readable JSON.")]
 ProjectDir = Annotated[
@@ -312,3 +319,54 @@ def init(
         raise typer.Exit(1) from error
     typer.echo(f"created {project!r} in {directory} ({len(written)} files)")
     typer.echo("next: edit schema.yaml and research.md, then `gleanyard validate`")
+
+
+@hub_app.command("run")
+def hub_run(
+    config_path: Annotated[Path, typer.Option("--config", help="hub.yaml")] = Path("hub.yaml"),
+    hub_repo: Annotated[
+        str | None,
+        typer.Option(
+            "--hub-repo", help="owner/name for alert issues; default: $GITHUB_REPOSITORY."
+        ),
+    ] = None,
+    state_path: Annotated[Path, typer.Option("--state", help="Snapshot for the dashboard.")] = Path(
+        "data/state.json"
+    ),
+    dry_run: Annotated[bool, typer.Option("--dry-run", help="Do not touch issues.")] = False,
+    as_json: JsonFlag = False,
+) -> None:
+    """Read every watched repo, write the snapshot, and open or close alert issues."""
+    try:
+        config = load_hub_config(config_path)
+    except ConfigError as error:
+        typer.echo(str(error), err=True)
+        raise typer.Exit(2) from error
+    token = os.environ.get("GH_TOKEN") or os.environ.get("GITHUB_TOKEN")
+    target = hub_repo or os.environ.get("GITHUB_REPOSITORY")
+    if not token or not (target or dry_run):
+        typer.echo("set GH_TOKEN and --hub-repo (or GITHUB_REPOSITORY)", err=True)
+        raise typer.Exit(2)
+    github = HttpGitHub(token or "")
+    state = collect_state(config, github)
+    state_path.parent.mkdir(parents=True, exist_ok=True)
+    state_path.write_text(state.model_dump_json(indent=2) + "\n", encoding="utf-8")
+    alerts = compute_alerts(state, config)
+    result = sync_issues(github, target or "", alerts, dry_run=dry_run)
+    digest = weekly_digest(github, target or "", state, config, dry_run=dry_run)
+    summary = {
+        "repos": [{"repo": r.repo, "level": r.level} for r in state.repos],
+        "alerts": [alert.key for alert in alerts],
+        "opened": result.opened,
+        "closed": result.closed,
+        "digest": digest,
+    }
+    if as_json:
+        typer.echo(json.dumps(summary, indent=2))
+    else:
+        for repo in state.repos:
+            typer.echo(f"{repo.level:6} {repo.repo}")
+        typer.echo(
+            f"alerts: {len(alerts)} active, {len(result.opened)} opened, "
+            f"{len(result.closed)} closed"
+        )
