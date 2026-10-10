@@ -1,0 +1,69 @@
+# Seed schema for a project that collects family-friendly events in Berlin.
+name: family-event
+version: 1
+description: One dated public event that children and their families can attend.
+identity: [title, start_date, time_text, venue]
+fields:
+  title:
+    type: string
+    required: true
+    max_length: 300
+    aliases: [SUMMARY, name, headline]
+  start_date:
+    type: date
+    required: true
+    aliases: [DTSTART, startDate]
+    scope: {min: today-1}
+  end_date:
+    type: date
+    aliases: [DTEND, endDate]
+  time_text:
+    type: time_text
+  venue:
+    type: string
+    aliases: [LOCATION, location.name]
+  street:
+    type: string
+    aliases: [streetAddress, location.address.streetAddress]
+  postal_code:
+    type: postcode
+    country: DE
+    description: Berlin postcodes only (10001 to 14199).
+    aliases: [postalCode, location.address.postalCode]
+    scope: {pattern: "^(1[0-3][0-9]{3}|14[01][0-9]{2})$"}
+  district:
+    type: string
+    description: Bezirk or Ortsteil as the source names it, for filtering.
+  age_min:
+    type: int
+    description: Youngest age the event is meant for, in years; 0 for babies.
+    scope: {min: 0, max: 18}
+  age_max:
+    type: int
+    description: Oldest age the event is meant for, in years.
+    scope: {min: 0, max: 18}
+  free:
+    type: bool
+    description: True when admission costs nothing.
+  price:
+    type: money
+    currency: EUR
+    description: Lowest admission price.
+  indoor:
+    type: bool
+    description: True for indoor events, false for outdoor ones.
+  categories:
+    type: string
+    many: true
+  source_url:
+    type: url
+    required: true
+    aliases: [URL, url]
+  description:
+    type: text
+    class: protected_text
+    aliases: [DESCRIPTION, description]
+  image_url:
+    type: url
+    class: image
+    aliases: [image]
