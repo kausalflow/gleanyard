@@ -10,16 +10,18 @@ Storage layout under the project's storage root (``data/`` by default)::
 from __future__ import annotations
 
 import json
+from collections.abc import Callable
 from datetime import date
 from pathlib import Path
+from urllib.parse import parse_qsl, urlencode, urlsplit
 
 import httpx
 from pydantic import BaseModel, Field
 
 from gleanyard.cache import RawCache
 from gleanyard.collect import Extraction, OutputRecord, extract
-from gleanyard.config import Delivery, LlmExtract, SelectorsExtract, SourceConfig
-from gleanyard.errors import SourceError, StructureChanged
+from gleanyard.config import Delivery, LlmExtract, Pagination, SelectorsExtract, SourceConfig
+from gleanyard.errors import PaginationChanged, SourceError, StructureChanged
 from gleanyard.export import public_record
 from gleanyard.extract.llm import LlmSession, ModelClient, PydanticAiClient
 from gleanyard.extract.selectors import SelectorSchema
@@ -85,13 +87,21 @@ def collect_source(
         selectors = selector_schema(project, source)
         if from_cache:
             responses = cached_pages(cache, source)
+            result = extract_pages(project, source, responses, today, selectors, session)
         else:
             fetcher = Fetcher(
                 source, user_agent=project.config.user_agent, cache=cache, client=client
             )
-            responses = fetch_pages(fetcher, source)
+            if source.pagination is not None:
+                responses, result = fetch_paginated(
+                    fetcher,
+                    source,
+                    lambda page: extract_pages(project, source, [page], today, selectors, session),
+                )
+            else:
+                responses = fetch_pages(fetcher, source)
+                result = extract_pages(project, source, responses, today, selectors, session)
             manifest = fetcher.finish()
-        result = extract_pages(project, source, responses, today, selectors, session)
     except FileNotFoundError as error:
         return SourceRun(source_id=source.id, ok=False, error_kind="no_cache", error=str(error))
     except SourceError as error:
@@ -142,11 +152,67 @@ def fetch_pages(fetcher: Fetcher, source: SourceConfig) -> list[Response]:
     return [first, *(fetcher.get(url) for url in urls)]
 
 
+def page_url(url: str, pagination: Pagination, index: int) -> str:
+    """``url`` with the paging parameter set for page ``index`` (0 is the first page)."""
+    parts = urlsplit(url)
+    query = [(k, v) for k, v in parse_qsl(parts.query, keep_blank_values=True)]
+    query = [(k, v) for k, v in query if k != pagination.param]
+    query.append((pagination.param, str(pagination.start + index * pagination.step)))
+    return parts._replace(query=urlencode(query)).geturl()
+
+
+def fetch_paginated(
+    fetcher: Fetcher,
+    source: SourceConfig,
+    extract_page: Callable[[Response], Extraction],
+) -> tuple[list[Response], Extraction]:
+    """Fetch and extract pages until one is empty; fail if paging stops behaving.
+
+    Pagination has changed when a page repeats an earlier document or only records
+    already seen (the parameter is ignored or loops), or when records are still coming
+    after ``max_pages`` (the source has grown past what was configured).
+    """
+    assert source.pagination is not None
+    pagination = source.pagination
+    responses: list[Response] = []
+    merged = Extraction()
+    seen_documents: set[str] = set()
+    seen_ids: set[str] = set()
+    for index in range(pagination.max_pages):
+        page = fetcher.get(page_url(str(source.url), pagination, index))
+        if page.sha256 in seen_documents:
+            raise PaginationChanged(
+                source.id,
+                f"page {index + 1} is the same document as an earlier page; "
+                f"the {pagination.param!r} parameter no longer selects a page",
+            )
+        seen_documents.add(page.sha256)
+        responses.append(page)
+        result = extract_page(page)
+        if not result.records and not result.rejections:
+            return responses, merged
+        fresh = [record for record in result.records if record.id not in seen_ids]
+        if index > 0 and result.records and not fresh:
+            raise PaginationChanged(
+                source.id,
+                f"page {index + 1} only repeats records from earlier pages; paging may be looping",
+            )
+        seen_ids.update(record.id for record in fresh)
+        merged.records.extend(fresh)
+        merged.rejections.extend(result.rejections)
+    raise PaginationChanged(
+        source.id,
+        f"still returning records after {pagination.max_pages} pages; "
+        "raise pagination.max_pages if the source really grew",
+    )
+
+
 def cached_pages(cache: RawCache, source: SourceConfig) -> list[Response]:
     manifest = cache.latest_manifest(source.id)
     if manifest is None or not manifest.responses:
         raise FileNotFoundError(f"{source.id}: no cached run to re-extract")
-    cached = manifest.responses if source.delivery == Delivery.SITEMAP else manifest.responses[-1:]
+    replay_all = source.delivery == Delivery.SITEMAP or source.pagination is not None
+    cached = manifest.responses if replay_all else manifest.responses[-1:]
     return [
         Response(**item.model_dump(), body=cache.get_body(item.sha256), from_cache=True)
         for item in cached
