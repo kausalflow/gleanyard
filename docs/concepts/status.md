@@ -10,12 +10,12 @@ A `--from-cache` run does not touch it, because nothing was checked against the 
 | Health | Meaning |
 | --- | --- |
 | `ok` | The run produced records, or produced none on a source marked `expect_empty: seasonal`. |
-| `degraded` | The run worked, but found under half of the last good record count. |
+| `degraded` | The run worked, but found more than 25% fewer records than the last good run. |
 | `failing` | The run raised an error (`transport`, `structure_changed`, `blocked`, ...) or found nothing on a source that should have records. |
 | `disabled` | The source has `enabled: false`. |
 
 A `degraded` source keeps comparing against the count from before the drop, so a source that
-stays at a third of its old size does not turn `ok` by itself. Sources that were not part of
+stays at half its old size does not turn `ok` by itself. Sources that were not part of
 a run (`collect -s`) keep their previous entry.
 
 ## What is in the file
