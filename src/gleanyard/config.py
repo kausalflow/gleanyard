@@ -194,6 +194,9 @@ class ProjectConfig(StrictModel):
     storage: StorageConfig = Field(default_factory=StorageConfig)
     rights_policy: RightsPolicy = Field(default_factory=RightsPolicy)
     export: str = Field(default="exports/records.jsonl", description="Public export path.")
+    excluded_hosts: list[str] = Field(
+        default_factory=list, description="Hosts research must not propose (checked by `check`)."
+    )
     status: str = Field(
         default="status.json", description="Health report path, read by the status hub."
     )

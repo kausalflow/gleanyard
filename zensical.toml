@@ -18,6 +18,7 @@ nav = [
     { "Records and the schema" = "concepts/schema.md" },
     { "Raw cache" = "concepts/raw-cache.md" },
     { "Rights and export" = "concepts/rights.md" },
+    { "Setting up a source" = "concepts/setting-up-a-source.md" },
     { "Health and status.json" = "concepts/status.md" },
   ] },
   { "Reference" = [

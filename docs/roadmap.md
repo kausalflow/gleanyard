@@ -16,8 +16,9 @@ with per-run cost and page caps and a page-hash cache, and PDF delivery through 
 `pagination_changed` and `filter_ignored` errors are reserved for sources that need paging or
 filters and are not raised yet.
 
-## 3. Project template
+## 3. Project template (in progress)
 
+Done: the commands that turn setup into checks (`probe`, `check`, `scaffold`, `try`). 
 A repo template whose `CLAUDE.md` tells an AI assistant how to research sources, set one up
 (trying extraction modes in order and pinning the first that passes), and repair it when
 health checks fail. Every change arrives as a pull request. crawl4ai drafts selector

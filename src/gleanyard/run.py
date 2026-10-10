@@ -82,16 +82,16 @@ def collect_source(
             make_client=None if from_cache or llm_client else PydanticAiClient,
         )
     try:
-        selectors = _selector_schema(project, source)
+        selectors = selector_schema(project, source)
         if from_cache:
-            responses = _cached_responses(cache, source)
+            responses = cached_pages(cache, source)
         else:
             fetcher = Fetcher(
                 source, user_agent=project.config.user_agent, cache=cache, client=client
             )
-            responses = _fetch(fetcher, source)
+            responses = fetch_pages(fetcher, source)
             manifest = fetcher.finish()
-        result = _extract_all(project, source, responses, today, selectors, session)
+        result = extract_pages(project, source, responses, today, selectors, session)
     except FileNotFoundError as error:
         return SourceRun(source_id=source.id, ok=False, error_kind="no_cache", error=str(error))
     except SourceError as error:
@@ -121,7 +121,7 @@ def collect_source(
     )
 
 
-def _selector_schema(project: Project, source: SourceConfig) -> SelectorSchema | None:
+def selector_schema(project: Project, source: SourceConfig) -> SelectorSchema | None:
     if not isinstance(source.extract, SelectorsExtract):
         return None
     path = project.root / source.extract.selectors
@@ -133,7 +133,7 @@ def _selector_schema(project: Project, source: SourceConfig) -> SelectorSchema |
         ) from error
 
 
-def _fetch(fetcher: Fetcher, source: SourceConfig) -> list[Response]:
+def fetch_pages(fetcher: Fetcher, source: SourceConfig) -> list[Response]:
     """The source URL; for a sitemap, the sitemap followed by each page it lists."""
     first = fetcher.get(str(source.url))
     if source.delivery != Delivery.SITEMAP:
@@ -142,7 +142,7 @@ def _fetch(fetcher: Fetcher, source: SourceConfig) -> list[Response]:
     return [first, *(fetcher.get(url) for url in urls)]
 
 
-def _cached_responses(cache: RawCache, source: SourceConfig) -> list[Response]:
+def cached_pages(cache: RawCache, source: SourceConfig) -> list[Response]:
     manifest = cache.latest_manifest(source.id)
     if manifest is None or not manifest.responses:
         raise FileNotFoundError(f"{source.id}: no cached run to re-extract")
@@ -153,7 +153,7 @@ def _cached_responses(cache: RawCache, source: SourceConfig) -> list[Response]:
     ]
 
 
-def _extract_all(
+def extract_pages(
     project: Project,
     source: SourceConfig,
     responses: list[Response],

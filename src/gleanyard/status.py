@@ -20,7 +20,7 @@ from gleanyard.project import Project
 from gleanyard.run import SourceRun
 
 Health = Literal["ok", "degraded", "failing", "disabled"]
-DROP_RATIO = 0.5  # a run with under half the last good record count is "degraded"
+DROP_RATIO = 0.75  # a run with over 25% fewer records than the last good one is "degraded"
 
 
 class SourceStatus(BaseModel):
