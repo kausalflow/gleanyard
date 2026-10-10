@@ -39,7 +39,17 @@ Rejected records go to review, never to the output.
 ```sh
 gleanyard validate [PROJECT] [--json]   # check schema and sources, with file:line fixes
 gleanyard json-schema source            # JSON Schema for editors and AI tools
+gleanyard collect [PROJECT] [-s ID] [--from-cache] [--json]
+gleanyard export [PROJECT] [--json]     # rights-filtered public export
 ```
+
+`collect` fetches each enabled source with the bounded fetcher (same hosts only,
+robots.txt, request delay, request and byte limits), keeps raw bodies in a
+content-addressed cache with conditional requests, and writes records and
+rejections under `data/`. `--from-cache` re-extracts the last run with no network.
+`export` checks the *current* source rights: a field is exported only if it is in
+`public_fields` and its class is allowed (`fact`, `protected_text`, `image`), and
+`personal` fields are never exported.
 
 ## Releasing
 

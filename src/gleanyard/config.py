@@ -12,7 +12,7 @@ from typing import Annotated, Any, Literal
 
 from pydantic import Field, HttpUrl, model_validator
 
-from gleanyard.rights import Coverage, Retention, SourceRights
+from gleanyard.rights import Coverage, Retention, RightsPolicy, SourceRights
 from gleanyard.schema import StrictModel
 
 SOURCE_ID = r"^[a-z0-9][a-z0-9-]*$"
@@ -185,5 +185,7 @@ class ProjectConfig(StrictModel):
     sources: str = "sources"
     user_agent: str = "gleanyard (+https://github.com/kausalflow/gleanyard)"
     storage: StorageConfig = Field(default_factory=StorageConfig)
+    rights_policy: RightsPolicy = Field(default_factory=RightsPolicy)
+    export: str = Field(default="exports/records.jsonl", description="Public export path.")
 
     model_config = {"extra": "forbid", "populate_by_name": True}
