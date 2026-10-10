@@ -1,0 +1,9 @@
+{"success": true, "result": {"count": 2, "results": [
+  {"title": "Synthetic air quality", "organization": {"name": "Synthetic Environment Agency"},
+   "landing_url": "https://data.example/dataset/air", "license_title": "CC-BY-4.0",
+   "metadata_modified": "2026-09-01T10:00:00", "notes": "Hourly readings.",
+   "resources": [{"format": "CSV", "size": 1048576}, {"format": "JSON", "size": 2048}]},
+  {"title": "Synthetic bike counts", "organization": {"name": "Synthetic City"},
+   "landing_url": "https://data.example/dataset/bikes", "license_title": "dl-de/by-2-0",
+   "metadata_modified": "2026-08-15T08:30:00", "resources": [{"format": "CSV"}]}
+]}}

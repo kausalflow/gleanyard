@@ -36,12 +36,19 @@ Item = dict[str, Any]
 def lookup(item: Any, path: str) -> Any:
     """Follow a dot path (``location.name``, ``offers.0.price``); missing is None.
 
-    A key that itself contains dots (``dc.date``) is tried whole first.
+    A key that itself contains dots (``dc.date``) is tried whole first. ``*`` reads the rest
+    of the path in every element of a list (``resources.*.format``) and returns the list.
     """
     if isinstance(item, dict) and path in item:
         return item[path]
-    current = item
-    for part in path.split("."):
+    return _follow(item, path.split("."))
+
+
+def _follow(current: Any, parts: list[str]) -> Any:
+    for index, part in enumerate(parts):
+        if part == "*" and isinstance(current, list):
+            values = [_follow(element, parts[index + 1 :]) for element in current]
+            return [value for value in values if value is not None] or None
         if isinstance(current, dict):
             current = current.get(part)
         elif isinstance(current, list) and part.isdigit() and int(part) < len(current):

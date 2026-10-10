@@ -33,10 +33,13 @@ A central repo that reads each project's `status.json`, publishes a dashboard on
 Pages, and opens GitHub issues on changes: a source starts failing, record counts drop, a
 scheduled run is missed, or a setup or repair PR waits too long.
 
-## 5. Second project
+## 5. Second project (done)
 
-A new project made from the template with its own schema, to check that nothing in the
-package is specific to the first one.
+`examples/datasets` is a catalog of open datasets made with `gleanyard init`: a different
+schema (publisher, licence, formats, size) and three deliveries (a JSON API, an RSS feed and a
+page with schema.org `Dataset` data). `tests/test_second_project.py` collects, exports by
+rights and reports status on the unchanged package. It found two gaps that were not about
+events and are fixed: list projections (`resources.*.format`) and RSS/HTTP dates.
 
 ## Decisions so far
 

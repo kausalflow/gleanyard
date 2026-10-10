@@ -157,3 +157,11 @@ def test_sitemap_filter_and_cap():
     capped = source("sitemap", {"max_pages": 1})
     with pytest.raises(BoundsExceeded):
         read_sitemap(capped, body, capped.reader_options)
+
+
+def test_lookup_star_reads_every_list_element():
+    item = {"resources": [{"format": "CSV"}, {"other": 1}, {"format": "JSON"}], "none": []}
+    assert lookup(item, "resources.*.format") == ["CSV", "JSON"]
+    assert lookup(item, "resources.*.missing") is None
+    assert lookup(item, "none.*.x") is None
+    assert lookup({"a": {"b": 1}}, "a.*.b") is None  # not a list

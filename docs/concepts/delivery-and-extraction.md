@@ -40,7 +40,9 @@ extract:
     city: Aachen            # constant values the source does not carry
 ```
 
-Dot paths reach into nested JSON: `offers.0.price` is the price of the first offer.
+Dot paths reach into nested JSON: `offers.0.price` is the price of the first offer, and `*` reads
+every element of a list: `resources.*.format` is the list of formats of all resources, for a
+field with `many: true`. `jsonld` mappings take the same paths.
 
 ### What each reader gives you
 

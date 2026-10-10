@@ -11,6 +11,7 @@ import re
 from collections.abc import Callable
 from datetime import date, datetime
 from decimal import Decimal, InvalidOperation
+from email.utils import parsedate_to_datetime
 from html import unescape
 from typing import Any
 from urllib.parse import urljoin, urlsplit
@@ -47,6 +48,14 @@ def text_block(value: Any) -> str:
 _DMY = re.compile(r"^(\d{1,2})\.\s?(\d{1,2})\.\s?(\d{2}|\d{4})$")
 
 
+def _rfc2822(text: str) -> datetime | None:
+    """RSS and HTTP dates such as ``Tue, 01 Sep 2026 10:00:00 GMT``."""
+    try:
+        return parsedate_to_datetime(text)
+    except (TypeError, ValueError, IndexError):
+        return None
+
+
 def to_date(value: Any) -> str:
     """ISO date from a date, datetime, ISO string or German ``d.m.yyyy``."""
     if isinstance(value, datetime):
@@ -66,7 +75,10 @@ def to_date(value: Any) -> str:
     try:
         return date.fromisoformat(text[:10]).isoformat()
     except ValueError as error:
-        raise NormalizeError(f"unrecognised date {text!r}") from error
+        stamp = _rfc2822(text)
+        if stamp is None:
+            raise NormalizeError(f"unrecognised date {text!r}") from error
+        return stamp.date().isoformat()
 
 
 def to_datetime(value: Any) -> str:
@@ -79,7 +91,10 @@ def to_datetime(value: Any) -> str:
     try:
         return datetime.fromisoformat(text).isoformat()
     except ValueError as error:
-        raise NormalizeError(f"unrecognised datetime {text!r}") from error
+        stamp = _rfc2822(text)
+        if stamp is None:
+            raise NormalizeError(f"unrecognised datetime {text!r}") from error
+        return stamp.isoformat()
 
 
 def to_time_text(value: Any) -> str:

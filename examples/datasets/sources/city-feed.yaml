@@ -1,0 +1,14 @@
+id: city-feed
+schema: dataset
+enabled: true
+delivery: rss
+url: https://city.example/datasets.rss
+extract:
+  mode: fields
+  map: {title: title, landing_page: link, modified: pubDate, description: description}
+  defaults: {publisher: Synthetic City}
+rights:
+  review_status: approved
+  effective_tier: facts_only
+  allowed_actions: {private_store: true, normalize: true, redistribute_facts: true}
+  public_fields: [title, publisher, landing_page, modified]
