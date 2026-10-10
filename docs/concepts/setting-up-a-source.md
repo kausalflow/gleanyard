@@ -12,9 +12,10 @@ pass or fail.
    and set `rights` from what they say.
 3. **Scaffold** a draft: `gleanyard scaffold https://example.org/events --id example-events --write`.
    Fill the gaps it reports (required fields it could not map).
-4. **Selectors only**: write `mappings/<id>.json`. crawl4ai can draft it at setup
-   time (the [repo template](repo-template.md)'s `CLAUDE.md` says how); gleanyard only runs
-   the result and never needs crawl4ai installed.
+4. **Selectors only**: write `mappings/<id>.json`. `gleanyard map example-events` drafts it
+   with crawl4ai (install `gleanyard[map]` on your own machine, and set `send_to_model` in the
+   source's rights, since the page goes to a model); gleanyard only runs the result and
+   never needs crawl4ai installed.
 5. **Try** it: `gleanyard try example-events`. Repeat until it prints `PASS`.
 6. Open a pull request with `gleanyard try example-events --markdown` as its description, so
    the reviewer spot-checks sample records instead of reading YAML.

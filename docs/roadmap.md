@@ -22,8 +22,8 @@ Done: the commands that turn setup into checks (`probe`, `check`, `scaffold`, `t
 `gleanyard init`, which writes the repo template. 
 A repo template whose `CLAUDE.md` tells an AI assistant how to research sources, set one up
 (trying extraction modes in order and pinning the first that passes), and repair it when
-health checks fail. Every change arrives as a pull request. crawl4ai drafts selector
-mappings at setup and repair only and never runs in scheduled collection.
+health checks fail. Every change arrives as a pull request. `gleanyard map` drafts selector
+mappings with crawl4ai at setup and repair only; crawl4ai never runs in scheduled collection.
 
 ## 4. Status hub (done)
 

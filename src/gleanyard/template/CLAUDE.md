@@ -61,13 +61,16 @@ Trigger: a candidate the owner marked ready.
    not leave a half-working mapping.
 3. For `selectors`, draft `mappings/<id>.json` with crawl4ai (setup-time only, never in CI):
    ```bash
-   pip install crawl4ai && crawl4ai-setup
+   pip install 'gleanyard[map]' && crawl4ai-setup
+   gleanyard map <id>
    ```
-   Fetch the page once, then call `JsonCssExtractionStrategy.generate_schema` (check the
-   installed version's signature with `help(...)`; use its validation option if present) with a
-   query that names the schema's fields, and save the JSON mapping. Keep crawl4ai's
-   `robots.txt` check on and its stealth and proxy options off. Edit by hand until `try`
-   passes; the mapping format is documented at https://kausalflow.github.io/gleanyard/.
+   `map` needs the source's `rights.allowed_actions.send_to_model` (the page goes to a model
+   provider). Rights are the owner's decision, so if it is not set, ask the owner rather than
+   setting it yourself. It fetches one sample page,
+   writes the mapping if it validates and finds records, and lists fields that are not in the
+   schema or required fields it left uncovered. Edit by hand until `try` passes; use
+   `--force` to redraft an existing mapping. The mapping format is documented at
+   https://kausalflow.github.io/gleanyard/.
 4. Save one fixture page to `tests/fixtures/<id>.<ext>` (small, public, no personal data).
 5. Set `expect_empty: seasonal` only if the source is empty out of season.
 6. Fill `rights` from the terms you read; leave `review_status: pending` and `enabled: false`.

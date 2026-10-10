@@ -19,6 +19,7 @@ from gleanyard.hub.dashboard import render_dashboard
 from gleanyard.hub.github import HttpGitHub
 from gleanyard.hub.state import HubState, collect_state
 from gleanyard.init import init_hub, init_project
+from gleanyard.mapping import draft_mapping
 from gleanyard.probe import probe as probe_url
 from gleanyard.project import load_project
 from gleanyard.run import collect_source, export_project
@@ -229,6 +230,54 @@ def try_command(
         for row in report.samples[:3]:
             typer.echo(f"  sample: {json.dumps(row, ensure_ascii=False)[:200]}")
     if not report.passed:
+        raise typer.Exit(1)
+
+
+@app.command("map")
+def map_command(
+    source: Annotated[str, typer.Argument(help="Source id (a `selectors` source).")],
+    root: ProjectDir = Path("."),
+    as_json: JsonFlag = False,
+    model: Annotated[
+        str | None, typer.Option("--model", help="Model id for crawl4ai, e.g. anthropic/<model>.")
+    ] = None,
+    force: Annotated[bool, typer.Option("--force", help="Replace an existing mapping.")] = False,
+    dry_run: Annotated[bool, typer.Option("--dry-run", help="Report without writing.")] = False,
+) -> None:
+    """Draft or repair a source's selector mapping with crawl4ai (needs gleanyard[map])."""
+    project = load_project(root)
+    # A mapping that does not exist yet is exactly what `map` is for.
+    issues = [
+        issue
+        for issue in project.issues
+        if not (issue.path == "extract.selectors" and "not found" in issue.message)
+    ]
+    if issues:
+        for issue in issues:
+            typer.echo(str(issue), err=True)
+        typer.echo("fix these with `gleanyard validate` first", err=True)
+        raise typer.Exit(2)
+    known = {item.id: item for item in project.sources}
+    if source not in known:
+        raise typer.BadParameter(f"unknown source: {source}")
+    try:
+        report = draft_mapping(project, known[source], model=model, force=force, dry_run=dry_run)
+    except (ConfigError, SourceError) as error:
+        typer.echo(f"error: {error}", err=True)
+        raise typer.Exit(2) from error
+    if as_json:
+        typer.echo(report.model_dump_json(indent=2))
+    else:
+        if report.error:
+            typer.echo(f"FAIL  {report.source_id}: {report.error}")
+        else:
+            verb = "wrote" if report.written else "would write"
+            typer.echo(f"OK  {verb} {report.path}: {report.records} records on {report.page}")
+        for name, rate in report.field_fill_rates.items():
+            typer.echo(f"  {name:16} {rate:6.0%}")
+        for note in report.notes:
+            typer.echo(f"  {note}")
+    if not report.ok:
         raise typer.Exit(1)
 
 

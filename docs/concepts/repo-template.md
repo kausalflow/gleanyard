@@ -48,5 +48,5 @@ file is what the status hub watches for a missed run.
 ## crawl4ai is setup-only
 
 The template never installs crawl4ai in a workflow. The assistant uses it on its own machine
-to draft a `mappings/<id>.json` selector file; the result is plain JSON that gleanyard runs
+through `gleanyard map` to draft a `mappings/<id>.json` selector file; the result is plain JSON that gleanyard runs
 with lxml.
