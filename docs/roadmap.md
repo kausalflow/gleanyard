@@ -41,6 +41,11 @@ page with schema.org `Dataset` data). `tests/test_second_project.py` collects, e
 rights and reports status on the unchanged package. It found two gaps that were not about
 events and are fixed: list projections (`resources.*.format`) and RSS/HTTP dates.
 
+`examples/berlin-family` is the first real project seed: family-friendly events in Berlin. It
+holds the schema (age range, free or priced, indoor or outdoor, Berlin postcodes only) and a
+research brief. Its sources are found with the setup procedure on a machine with network
+access, in a repo of its own.
+
 ## Decisions so far
 
 - Recurring sources are the focus; one-off research is possible through `llm` mode but not
