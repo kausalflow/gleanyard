@@ -1,6 +1,6 @@
 [project]
 name = "gleanyard"
-version = "0.0.1"
+version = "0.1.0"
 description = "Collect structured data from recurring web sources into a schema you define."
 readme = "README.md"
 license = "MIT"
@@ -18,7 +18,7 @@ dependencies = [
     "typer>=0.12,<1",
 ]
 classifiers = [
-    "Development Status :: 1 - Planning",
+    "Development Status :: 3 - Alpha",
     "Programming Language :: Python :: 3",
     "Operating System :: OS Independent",
 ]
