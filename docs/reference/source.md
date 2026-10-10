@@ -34,6 +34,7 @@ retention: {raw_days: 30}
 | `homepage` | Optional. Relative URLs resolve against it, and its host is also allowed for requests. |
 | `reader` | Options for the delivery; see below. Unknown keys are errors. |
 | `extract` | How to map onto the schema; see below. |
+| `filter` | Optional. Check that a filter in the URL is still applied; see below. |
 | `fetch` | Request limits. |
 | `expect_empty` | `never` (default) or `seasonal`. A seasonal source with no records is healthy, not failing. |
 | `coverage` | Where the source applies. Informational. |
@@ -67,8 +68,26 @@ source does not carry.
 | `selectors` | `selectors`: path to a crawl4ai JSON CSS schema, relative to the project |
 | `llm` | `llm.model`, `llm.max_pages_per_run`, `llm.max_cost_per_run_eur`, `llm.only_if_changed`, `llm.input_price_per_mtok_eur`, `llm.output_price_per_mtok_eur`, `llm.max_input_chars`; optional `instructions` |
 
-Only `fields` runs today. The others are accepted in config so projects can be written
-ahead of the extraction runners; see the [roadmap](../roadmap.md).
+Each mode must fit the delivery: feeds (`ical`, `json`, `rss`, `csv`) use `fields`; `html` and
+`sitemap` use `jsonld`, `selectors` or `llm`; `pdf` uses `llm`.
+
+## `filter`
+
+When the URL narrows the data (`?city=aachen`), a source can quietly stop honouring it and
+return everything. `filter` states what should be inside and is checked on the extracted
+records.
+
+```yaml
+filter: {field: city, one_of: [Aachen], max_outside_share: 0.2}
+```
+
+| Key | Meaning |
+| --- | --- |
+| `field` | Schema field the URL filter constrains. |
+| `one_of` | Values that count as inside; strings ignore case. |
+| `max_outside_share` | Default 0.2. When more of the records fall outside, the run fails with `filter_ignored`; fewer are moved to the review file. |
+
+Records with no value for the field are not judged.
 
 ## `fetch` limits
 
