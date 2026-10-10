@@ -31,9 +31,10 @@ Repository = "https://github.com/kausalflow/gleanyard"
 
 [project.optional-dependencies]
 llm = ["pydantic-ai>=1"]
+pdf = ["pypdf>=5"]
 
 [dependency-groups]
-dev = ["pytest>=8", "ruff>=0.6", "pydantic-ai-slim>=1"]
+dev = ["pytest>=8", "ruff>=0.6", "pydantic-ai-slim>=1", "pypdf>=5"]
 docs = ["zensical"]
 
 [build-system]

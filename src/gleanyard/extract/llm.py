@@ -14,6 +14,7 @@ which is how tests run without a network.
 from __future__ import annotations
 
 import hashlib
+import io
 import json
 from collections.abc import Callable
 from dataclasses import dataclass, field
@@ -21,14 +22,14 @@ from typing import Any, Protocol
 
 from pydantic import BaseModel
 
-from gleanyard.config import LlmExtract, SourceConfig
-from gleanyard.errors import BoundsExceeded, ModelError
+from gleanyard.config import Delivery, LlmExtract, SourceConfig
+from gleanyard.errors import BoundsExceeded, ModelError, StructureChanged
 from gleanyard.extract.selectors import parse_html
 from gleanyard.fetch import Response
 from gleanyard.schema import ProjectSchema
 from gleanyard.storage import LocalObjectStore
 
-SYSTEM_PROMPT = """You extract structured records from the text of one web page.
+SYSTEM_PROMPT = """You extract structured records from the text of one web page or document.
 Return only records that the page itself states. Never guess or invent a value; leave a field
 out when the page does not give it. Copy text exactly as written on the page. Give dates in
 ISO form (YYYY-MM-DD) and times as written. Links appear as `text <url>`; use those urls.
@@ -82,6 +83,27 @@ def page_text(body: bytes, source_id: str, max_chars: int) -> str:
     return "\n".join(line for line in lines if line)[:max_chars]
 
 
+def pdf_text(body: bytes, source_id: str, max_chars: int) -> str:
+    """Text layer of a PDF, one block per page. Scanned PDFs without text are an error."""
+    try:
+        from pypdf import PdfReader
+        from pypdf.errors import PyPdfError
+    except ImportError as error:
+        raise ModelError(
+            source_id, 'PDF delivery needs the optional extra: pip install "gleanyard[pdf]"'
+        ) from error
+    try:
+        reader = PdfReader(io.BytesIO(body))
+        pages = [page.extract_text() or "" for page in reader.pages]
+    except (PyPdfError, ValueError, KeyError) as error:
+        raise StructureChanged(source_id, f"the file is not a readable PDF: {error}") from error
+    lines = (" ".join(line.split()) for page in pages for line in page.splitlines())
+    text = "\n".join(line for line in lines if line)
+    if not text:
+        raise StructureChanged(source_id, "the PDF has no text layer (scanned image?)")
+    return text[:max_chars]
+
+
 def field_guide(schema: ProjectSchema) -> str:
     lines = []
     for name, spec in schema.fields.items():
@@ -103,10 +125,10 @@ def build_prompt(source: SourceConfig, schema: ProjectSchema, text: str) -> str:
         else ""
     )
     return (
-        f"Extract every {schema.name} record on this page"
+        f"Extract every {schema.name} record in this document"
         f"{f' ({schema.description})' if schema.description else ''}.\n"
         f'Answer with an object {{"items": [...]}}; each item has these keys:\n'
-        f"{field_guide(schema)}\n{extra}\nPAGE TEXT:\n{text}"
+        f"{field_guide(schema)}\n{extra}\nDOCUMENT TEXT:\n{text}"
     )
 
 
@@ -127,7 +149,8 @@ class LlmSession:
     ) -> list[dict[str, Any]]:
         assert isinstance(source.extract, LlmExtract)
         limits = source.extract.llm
-        text = page_text(response.body, source.id, limits.max_input_chars)
+        read = pdf_text if source.delivery == Delivery.PDF else page_text
+        text = read(response.body, source.id, limits.max_input_chars)
         prompt = build_prompt(source, schema, text)
         key = self._key(source, prompt)
         cached = self._read(key)

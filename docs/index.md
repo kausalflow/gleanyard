@@ -9,8 +9,9 @@ records, check every one against the schema and write only the records that pass
 
 !!! note "Early release"
     The package core is in place: schema validation, a bounded fetcher, a raw-page cache,
-    feed readers (iCal, JSON, RSS/Atom, CSV, sitemap), `fields` extraction and a
-    rights-filtered export. HTML, PDF and model-based extraction come next; see the
+    feed readers (iCal, JSON, RSS/Atom, CSV, sitemap), all four extraction modes (`fields`,
+    `jsonld`, `selectors`, `llm`), HTML, sitemap and PDF delivery, a `status.json` health report
+    and a rights-filtered export. The repo template and status hub come next; see the
     [roadmap](roadmap.md).
 
 ## Why it looks like this
