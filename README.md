@@ -58,5 +58,5 @@ rejections under `data/`. `--from-cache` re-extracts the last run with no networ
 Publishing to PyPI is automatic through trusted publishing (no API token).
 
 1. Bump `version` in `pyproject.toml` and merge to `main`.
-2. Create a GitHub release with tag `v<version>`, e.g. `v0.1.0`.
+2. Create a GitHub release with tag `v<version>`, e.g. `v0.2.0`.
 3. The `Publish to PyPI` workflow builds the package and uploads it.
