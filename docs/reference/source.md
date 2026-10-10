@@ -34,6 +34,7 @@ retention: {raw_days: 30}
 | `homepage` | Optional. Relative URLs resolve against it, and its host is also allowed for requests. |
 | `reader` | Options for the delivery; see below. Unknown keys are errors. |
 | `extract` | How to map onto the schema; see below. |
+| `pagination` | Optional. Walk a paged source; see below. |
 | `fetch` | Request limits. |
 | `expect_empty` | `never` (default) or `seasonal`. A seasonal source with no records is healthy, not failing. |
 | `coverage` | Where the source applies. Informational. |
@@ -67,8 +68,28 @@ source does not carry.
 | `selectors` | `selectors`: path to a crawl4ai JSON CSS schema, relative to the project |
 | `llm` | `llm.model`, `llm.max_pages_per_run`, `llm.max_cost_per_run_eur`, `llm.only_if_changed`, `llm.input_price_per_mtok_eur`, `llm.output_price_per_mtok_eur`, `llm.max_input_chars`; optional `instructions` |
 
-Only `fields` runs today. The others are accepted in config so projects can be written
-ahead of the extraction runners; see the [roadmap](../roadmap.md).
+Each mode must fit the delivery: feeds (`ical`, `json`, `rss`, `csv`) use `fields`; `html` and
+`sitemap` use `jsonld`, `selectors` or `llm`; `pdf` uses `llm`.
+
+## `pagination`
+
+For sources that serve records in pages through one query parameter (`json`, `html`, `rss`
+and `csv` deliveries).
+
+```yaml
+pagination: {param: page, start: 1, step: 1, max_pages: 10}
+```
+
+| Key | Default |
+| --- | --- |
+| `param` | required; the query parameter that selects the page, such as `page` or `offset` |
+| `start` | 1; value on the first page |
+| `step` | 1; use the page size for offsets |
+| `max_pages` | 10; at least 2. `fetch.max_requests` must allow one more request than this |
+
+Pages are fetched until one has no records. A run fails with `pagination_changed` when a page
+repeats an earlier document or only records already seen, or when records still arrive after
+`max_pages`. `collect --from-cache` replays every cached page.
 
 ## `fetch` limits
 
