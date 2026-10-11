@@ -303,7 +303,9 @@ def load_records(project: Project, source_id: str) -> list[OutputRecord]:
     key = f"records/{source_id}.jsonl"
     if not store.exists(key):
         return []
-    lines = store.get(key).decode().splitlines()
+    # Split on "\n" only: str.splitlines() also breaks on U+2028, U+0085 and form feeds,
+    # which JSON leaves raw inside strings.
+    lines = store.get(key).decode().split("\n")
     return [OutputRecord.model_validate_json(line) for line in lines if line.strip()]
 
 
