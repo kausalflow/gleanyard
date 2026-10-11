@@ -11,7 +11,7 @@ from typer.testing import CliRunner
 from gleanyard.cli import app
 from gleanyard.project import load_project
 from gleanyard.rights import AllowedActions
-from gleanyard.run import collect_source, export_project, load_records
+from gleanyard.run import _store, _write_jsonl, collect_source, export_project, load_records
 
 EXAMPLE = Path(__file__).parents[1] / "examples" / "events"
 FIXTURES = Path(__file__).parent / "fixtures"
@@ -71,6 +71,23 @@ def test_collect_then_export_then_reextract(project_dir):
     assert again.ok and again.records == run.records and again.from_cache
     assert calls == []
     assert load_project(project_dir).sources  # still valid
+
+
+def test_records_with_unicode_line_separators_load(project_dir):
+    # Organisers paste text with U+2028, U+0085 or form feeds; JSON keeps them raw inside
+    # strings, so the record store must split on "\n" only.
+    project = load_project(project_dir)
+    source = next(item for item in project.sources if item.id == "aachen-city-events")
+    body = (FIXTURES / "calendar.ics").read_bytes()
+    collect_source(project, source, client=client(body), today=date(2026, 10, 10))
+    records = load_records(project, source.id)
+    records[0].values["title"] = "Parodien\u2028einmalig\x85gut\x0c."
+    _write_jsonl(_store(project), f"records/{source.id}.jsonl", records)
+
+    again = load_records(project, source.id)
+    assert len(again) == len(records)
+    assert again[0].values["title"] == "Parodien\u2028einmalig\x85gut\x0c."
+    export_project(project)
 
 
 def test_collect_refuses_without_rights(project_dir):
