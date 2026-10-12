@@ -13,6 +13,7 @@ import hashlib
 import time
 from collections.abc import Callable
 from datetime import UTC, datetime
+from email.utils import parsedate_to_datetime
 from urllib.parse import urljoin, urlsplit
 from urllib.robotparser import RobotFileParser
 
@@ -25,6 +26,11 @@ from gleanyard.errors import Blocked, BoundsExceeded, TransportError
 MAX_REDIRECTS = 5
 RETRY_STATUS = frozenset({500, 502, 503, 504})
 BLOCK_STATUS = frozenset({401, 403, 429, 451})
+# A 429 is retried after the server's Retry-After, but only when that wait is short;
+# a longer one is treated as blocked, like any other refusal.
+TOO_MANY_REQUESTS = 429
+DEFAULT_RETRY_AFTER = 30.0
+MAX_RETRY_AFTER = 120.0
 
 
 class Response(CachedResponse):
@@ -207,6 +213,11 @@ class Fetcher:
             if response.status_code in RETRY_STATUS and attempt < self.max_attempts and not robots:
                 self.sleep(2**attempt)
                 continue
+            if response.status_code == TOO_MANY_REQUESTS and attempt < self.max_attempts:
+                wait = _retry_after(response.headers.get("retry-after"))
+                if wait is not None and wait <= MAX_RETRY_AFTER:
+                    self.sleep(wait)
+                    continue
             return response
         raise AssertionError("unreachable")
 
@@ -239,6 +250,22 @@ class Fetcher:
                 self.sleep(wait)
         self.requests += 1
         self._last_request = time.monotonic()
+
+
+def _retry_after(value: str | None) -> float | None:
+    """Seconds to wait from a Retry-After header (delay or HTTP date), or None if unusable."""
+    if value is None:
+        return DEFAULT_RETRY_AFTER
+    value = value.strip()
+    if value.isdigit():
+        return float(value)
+    try:
+        when = parsedate_to_datetime(value)
+    except (TypeError, ValueError):
+        return None
+    if when.tzinfo is None:
+        when = when.replace(tzinfo=UTC)
+    return max(0.0, (when - datetime.now(UTC)).total_seconds())
 
 
 def _sha256(body: bytes) -> str:
