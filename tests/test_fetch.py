@@ -1,4 +1,5 @@
 from datetime import UTC, datetime, timedelta
+from email.utils import format_datetime
 
 import httpx
 import pytest
@@ -156,6 +157,47 @@ def test_server_errors_are_retried():
     sleeps = []
     assert fetcher(site, sleeps=sleeps).get("https://example.org/events.json").body == b"ok"
     assert 2 in sleeps
+
+
+@pytest.mark.parametrize(("headers", "wait"), [({"retry-after": "7"}, 7), ({}, 30)])
+def test_too_many_requests_waits_for_retry_after(headers, wait):
+    responses = iter([httpx.Response(429, headers=headers), httpx.Response(200, text="ok")])
+    site = Site({"https://example.org/events.json": lambda _: next(responses)})
+    sleeps = []
+    assert fetcher(site, sleeps=sleeps).get("https://example.org/events.json").body == b"ok"
+    assert wait in sleeps
+
+
+def test_retry_after_accepts_an_http_date():
+    later = format_datetime(datetime.now(UTC) + timedelta(seconds=20), usegmt=True)
+    responses = iter([httpx.Response(429, headers={"retry-after": later}), httpx.Response(200)])
+    site = Site({"https://example.org/events.json": lambda _: next(responses)})
+    sleeps = []
+    fetcher(site, sleeps=sleeps).get("https://example.org/events.json")
+    assert any(10 < s <= 20 for s in sleeps)
+
+
+@pytest.mark.parametrize("retry_after", ["3600", "soon"])
+def test_long_or_unreadable_retry_after_is_blocked(retry_after):
+    site = Site(
+        {
+            "https://example.org/events.json": httpx.Response(
+                429, headers={"retry-after": retry_after}
+            )
+        }
+    )
+    with pytest.raises(Blocked, match="HTTP 429"):
+        fetcher(site).get("https://example.org/events.json")
+    assert len(site.page_calls()) == 1
+
+
+def test_persistent_too_many_requests_is_blocked():
+    site = Site(
+        {"https://example.org/events.json": httpx.Response(429, headers={"retry-after": "1"})}
+    )
+    with pytest.raises(Blocked, match="HTTP 429"):
+        fetcher(site).get("https://example.org/events.json")
+    assert len(site.page_calls()) == 3
 
 
 def test_response_size_limit():
