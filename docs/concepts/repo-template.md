@@ -36,8 +36,9 @@ robots.txt or bot protection, and it never edits generated data.
 
 The `collect` workflow validates the config, collects, exports, commits `status.json`,
 `data/records`, `data/review` and `exports/`, and keeps the raw cache between runs with the
-Actions cache. If any source fails it opens (or comments on) one issue labelled `repair` that
-lists the failing sources, then fails the run so it shows red. Sources that use `llm` need the
+Actions cache. If any source is failing or `degraded` (see
+[Health](status.md#checks-on-a-run-that-worked)) it opens (or comments on) one issue labelled
+`repair` that lists those sources, then fails the run so it shows red. Sources that use `llm` need the
 provider's API key as a repository secret, passed to the `collect` step as an environment
 variable; other repos need no secret.
 

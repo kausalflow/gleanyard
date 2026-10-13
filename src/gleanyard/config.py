@@ -197,6 +197,11 @@ class SourceConfig(StrictModel):
     expect_empty: Literal["never", "seasonal"] = Field(
         default="never", description="seasonal: an empty run is healthy, not a failure."
     )
+    expect_change_days: int | None = Field(
+        default=None,
+        ge=1,
+        description="Warn when the records have not changed for this many days (off by default).",
+    )
     coverage: Coverage = Field(default_factory=Coverage)
     rights: SourceRights
     retention: Retention = Field(default_factory=Retention)
