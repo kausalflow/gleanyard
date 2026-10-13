@@ -1,7 +1,9 @@
 """Render the hub snapshot as one static, self-contained HTML page (no JavaScript).
 
-Every repo is a row with a red, amber or green marker; opening it lists its sources and the
+Every project is a row with a red, amber or green marker; opening it lists its sources and the
 setup or repair pull requests waiting on a review. Pages deploy to GitHub Pages.
+``render_summary`` gives the same overview as Markdown, for the workflow's job summary, which
+only people with access to the hub repo can see.
 """
 
 from __future__ import annotations
@@ -34,6 +36,7 @@ vertical-align:top;overflow-wrap:anywhere}th{color:var(--muted);font-weight:500}
 .tag{font-size:.75rem;padding:.05rem .45rem;border-radius:999px;border:1px solid currentColor}
 .tag.ok,.tag.disabled{color:var(--muted)}.tag.degraded{color:var(--amber)}
 .tag.failing{color:var(--red)}
+.problem{color:var(--red)}
 @media (max-width:36rem){.hide-sm{display:none}}
 """
 
@@ -43,6 +46,7 @@ def render_dashboard(state: HubState, title: str = "Collection status") -> str:
     for repo in state.repos:
         counts[repo.level] += 1
     rows = "\n".join(_repo(repo, state.generated_at) for repo in state.repos)
+    problems = "".join(f"<p class=problem>{escape(problem)}</p>" for problem in state.problems)
     summary = ", ".join(f"{counts[level]} {level}" for level in ("red", "amber", "green"))
     return f"""<!doctype html>
 <html lang="en"><head><meta charset="utf-8">
@@ -50,8 +54,8 @@ def render_dashboard(state: HubState, title: str = "Collection status") -> str:
 <title>{escape(title)}</title><style>{CSS}</style></head>
 <body><main>
 <h1>{escape(title)}</h1>
-<p class="muted">{len(state.repos)} repos ({summary}). Updated {_stamp(state.generated_at)}.</p>
-{rows}
+<p class="muted">{len(state.repos)} projects ({summary}). Updated {_stamp(state.generated_at)}.</p>
+{problems}{rows}
 </main></body></html>
 """
 
@@ -61,7 +65,6 @@ def _stamp(moment: datetime | None) -> str:
 
 
 def _repo(repo: RepoState, now: datetime) -> str:
-    link = f"https://github.com/{escape(repo.repo)}"
     status = repo.status
     note = escape(repo.problem) if repo.problem else ""
     if status:
@@ -96,10 +99,42 @@ def _repo(repo: RepoState, now: datetime) -> str:
                 f"<td>{days} day(s)</td></tr>"
             )
         body += "</table>"
-    actions = f"<p class=muted><a href='{link}/actions'>Actions</a> · <a href='{link}'>Repo</a></p>"
+    if repo.on_github:
+        link = f"https://github.com/{escape(repo.repo)}"
+        actions = (
+            f"<p class=muted><a href='{link}/actions'>Actions</a> · <a href='{link}'>Repo</a></p>"
+        )
+    else:
+        actions = f"<p class=muted><a href='{escape(repo.url or '')}'>status.json</a></p>"
     return (
         f"<details{' open' if repo.level != 'green' else ''}><summary>"
         f"<span class='dot {repo.level}' role=img aria-label='{repo.level}'></span>"
         f"<span class=repo>{escape(repo.repo)}</span><span class='muted grow'>{note}</span>"
         f"</summary>{body}{actions}</details>"
     )
+
+
+MARKERS = {"green": "🟢", "amber": "🟠", "red": "🔴"}
+
+
+def render_summary(state: HubState, title: str = "Collection status") -> str:
+    """The dashboard as Markdown: one line per project, a table for those that need attention."""
+    lines = [f"# {title}", "", f"Updated {state.generated_at:%Y-%m-%d %H:%M} UTC.", ""]
+    lines += [f"> {problem}" for problem in state.problems]
+    for repo in state.repos:
+        if repo.status is None:
+            lines.append(f"- {MARKERS['red']} **{repo.repo}**: {repo.problem}")
+            continue
+        sources = repo.status.sources
+        broken = [s for s in sources if s.health in {"failing", "degraded"}]
+        lines.append(
+            f"- {MARKERS[repo.level]} **{repo.repo}**: {len(sources)} sources, "
+            f"{sum(s.records for s in sources)} records"
+            + (f", {len(broken)} need attention" if broken else "")
+        )
+        for source in broken:
+            detail = source.error or source.note or ""
+            lines.append(f"  - `{source.id}` {source.health}: {detail}")
+        for pull in repo.pulls:
+            lines.append(f"  - waiting: [#{pull.number} {pull.title}]({pull.url})")
+    return "\n".join(lines) + "\n"

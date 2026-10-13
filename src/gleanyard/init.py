@@ -10,7 +10,10 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
+from pydantic import ValidationError
+
 from gleanyard.errors import ConfigError
+from gleanyard.hub.config import HubConfig
 
 TEMPLATE = Path(__file__).parent / "template"
 EMPTY_DIRS = ("sources", "mappings", "candidates", "evidence", "tests/fixtures")
@@ -60,9 +63,63 @@ def _undot(part: str) -> str:
 HUB_TEMPLATE = Path(__file__).parent / "hub" / "template"
 
 
-def init_hub(root: Path, name: str, repos: list[str]) -> list[Path]:
-    """Write the status hub template; ``repos`` seeds ``hub.yaml``."""
+def init_hub(
+    root: Path, name: str, repos: list[str], owner: str | None = None, pages: bool = False
+) -> list[Path]:
+    """Write the status hub template.
+
+    ``repos`` (owner/name or status.json URLs) seeds ``hub.yaml``, ``owner`` turns on discovery
+    by topic, and ``pages`` publishes the dashboard on GitHub Pages instead of only in the
+    workflow's job summary.
+    """
     if not NAME.match(name):
         raise ConfigError(f"hub name {name!r} must be lowercase letters, digits and dashes")
-    listing = "\n".join(f"  - {repo}" for repo in repos) or "  - OWNER/REPO"
-    return write_template(HUB_TEMPLATE, root, {"{{hub}}": name, "{{repos}}": listing})
+    config = {"repos": repos, "discover": {"owner": owner} if owner else None}
+    try:
+        HubConfig.model_validate(config)
+    except ValidationError as error:
+        raise ConfigError(f"hub.yaml would not be valid: {error}") from error
+    listing = "\n".join(f"  - {repo}" for repo in repos)
+    replacements = {
+        "{{hub}}": name,
+        "{{repos}}": f"repos:\n{listing}" if repos else "repos: []",
+        "{{discover}}": (
+            f"discover:\n  owner: {owner}\n  topic: gleanyard"
+            if owner
+            else "# discover:            # also watch every repo of an owner with a topic\n"
+            "#   owner: my-org\n#   topic: gleanyard"
+        ),
+        **(HUB_PAGES if pages else HUB_ALERTS_ONLY),
+    }
+    return write_template(HUB_TEMPLATE, root, replacements)
+
+
+HUB_PAGES = {
+    "{{pages_permissions}}": "  pages: write\n  id-token: write\n",
+    "{{environment}}": (
+        "    environment:\n      name: github-pages\n"
+        "      url: ${{ steps.deploy.outputs.page_url }}\n"
+    ),
+    "{{publish}}": (
+        "      - uses: actions/upload-pages-artifact@v3\n        with:\n          path: site\n"
+        "      - id: deploy\n        uses: actions/deploy-pages@v4\n"
+    ),
+    "{{dashboard}}": (
+        "The dashboard is published on GitHub Pages. On most GitHub plans that page is\n"
+        "public: it shows source names, record counts and error messages, never records.\n"
+        "Set **Settings → Pages → Source** to **GitHub Actions**."
+    ),
+}
+HUB_ALERTS_ONLY = {
+    "{{pages_permissions}}": "",
+    "{{environment}}": "",
+    "{{publish}}": (
+        "      - uses: actions/upload-artifact@v4\n        with:\n          name: dashboard\n"
+        "          path: site\n"
+    ),
+    "{{dashboard}}": (
+        "Nothing is published. Each run's summary page (the `hub` workflow in the Actions\n"
+        "tab) shows the overview, and the dashboard page is attached to the run. To publish\n"
+        "it on GitHub Pages instead, recreate the hub with `gleanyard hub init --pages`."
+    ),
+}

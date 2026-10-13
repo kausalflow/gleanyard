@@ -39,18 +39,29 @@ Shows the health report written by the last `collect` (see [Health and status.js
 Creates a collection project in an empty (or missing) directory from the bundled template; see
 [the repo template](../concepts/repo-template.md).
 
+## `gleanyard hub check [--config hub.yaml] [--hub-repo OWNER/NAME] [--json]`
+
+Checks a hub's setup without changing anything: `hub.yaml`, the token, discovery, every
+project's `status.json`, and Pages when the workflow publishes there. Prints `ok` or `FAIL`
+per check, with the step that fixes each failure, and exits 1 if anything failed.
+
 ## `gleanyard hub run [--config hub.yaml] [--hub-repo OWNER/NAME] [--state PATH] [--dry-run] [--json]`
 
-Reads every repo in `hub.yaml`, writes the dashboard snapshot, and opens or closes alert issues
-in the hub repo (see [the status hub](../concepts/status-hub.md)). Needs `GH_TOKEN`.
+Reads every project in `hub.yaml` (listed, discovered by topic, or given as a status.json URL),
+writes the dashboard snapshot, and opens or closes alert issues in the hub repo (see
+[the status hub](../concepts/status-hub.md)). Reads with `GH_TOKEN` and writes issues with
+`GITHUB_TOKEN` when both are set. A hub that only lists URLs can `--dry-run` with no token.
 
 ## `gleanyard hub build [--state PATH] [--out DIR] [--title TEXT]`
 
-Renders the snapshot from `hub run` as a static dashboard in `DIR` (default `site/`).
+Renders the snapshot from `hub run` as a static dashboard (`index.html`) and a Markdown
+overview (`summary.md`, for the workflow's job summary) in `DIR` (default `site/`).
 
-## `gleanyard hub init DIR [--repo OWNER/NAME]... [--name NAME]`
+## `gleanyard hub init DIR [--owner OWNER] [--repo OWNER/NAME|URL]... [--pages] [--name NAME]`
 
-Creates the status hub repo from the bundled template.
+Creates the status hub repo from the bundled template. `--owner` watches every repo of that
+user or organization with the topic `gleanyard`; `--repo` lists projects. Without `--pages`
+nothing is published and the overview goes to each run's summary page.
 
 ## `gleanyard probe URL [--root DIR] [--json]`
 
