@@ -22,6 +22,7 @@ nav = [
     { "Setting up a source" = "concepts/setting-up-a-source.md" },
     { "Health and status.json" = "concepts/status.md" },
     { "Status hub" = "concepts/status-hub.md" },
+    { "DataHerb catalog" = "concepts/dataherb.md" },
   ] },
   { "Reference" = [
     { "Schema file" = "reference/schema.md" },

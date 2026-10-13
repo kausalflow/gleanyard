@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Annotated
 from urllib.parse import urlsplit
@@ -12,6 +13,7 @@ import typer
 
 from gleanyard import __version__
 from gleanyard.config import ProjectConfig, SourceConfig
+from gleanyard.dataherb import write_job_status, write_metadata
 from gleanyard.errors import ConfigError, SourceError
 from gleanyard.hub.alerts import compute_alerts, sync_issues, weekly_digest
 from gleanyard.hub.config import load_hub_config
@@ -125,9 +127,12 @@ def collect(
         selected = [known[name] for name in source]
     else:
         selected = [item for item in project.sources if item.enabled]
+    started_at = datetime.now(UTC)
     runs = [collect_source(project, item, from_cache=from_cache) for item in selected]
     if not from_cache and runs:
-        write_status(project, build_status(project, runs, load_status(project)))
+        report = build_status(project, runs, load_status(project))
+        write_status(project, report)
+        write_job_status(project, report, runs, started_at)
     if as_json:
         typer.echo(json.dumps([run.model_dump() for run in runs], indent=2))
     else:
@@ -149,10 +154,16 @@ def export(root: ProjectDir = Path("."), as_json: JsonFlag = False) -> None:
     """Write the rights-filtered public export from stored records."""
     project = _loaded(root)
     path, count = export_project(project)
+    metadata = write_metadata(project, count, path)
     if as_json:
-        typer.echo(json.dumps({"path": str(path), "records": count}))
+        result = {"path": str(path), "records": count}
+        if metadata:
+            result["dataherb"] = str(metadata)
+        typer.echo(json.dumps(result))
     else:
         typer.echo(f"wrote {count} records to {path}")
+        if metadata:
+            typer.echo(f"wrote DataHerb metadata to {metadata}")
 
 
 @app.command()
