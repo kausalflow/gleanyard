@@ -1,6 +1,6 @@
 """``gleanyard try SOURCE``: a live dry run that judges whether a source works.
 
-Nothing is written (no raw cache, records, review file or status): the run fetches the
+Nothing is stored (no raw cache, records, review file or status): the run fetches the
 source, extracts with its pinned mode and reports sample records, how often each field is
 filled, why records were rejected, and a pass or fail against fixed thresholds. The verdict
 is deterministic, so setup and repair end when ``try`` passes, not when a model is satisfied.
@@ -10,6 +10,7 @@ from __future__ import annotations
 
 from collections import Counter
 from datetime import date
+from pathlib import Path
 from typing import Any
 
 import httpx
@@ -18,7 +19,7 @@ from pydantic import BaseModel, Field
 from gleanyard.config import LlmExtract, SourceConfig
 from gleanyard.errors import SourceError
 from gleanyard.extract.llm import LlmSession, ModelClient, PydanticAiClient
-from gleanyard.fetch import Fetcher
+from gleanyard.fetch import Fetcher, Response
 from gleanyard.project import Project
 from gleanyard.run import extract_pages, fetch_pages, selector_schema
 from gleanyard.storage import LocalObjectStore
@@ -44,6 +45,7 @@ class TryReport(BaseModel):
     cost_eur: float = 0.0
     error_kind: str | None = None
     error: str | None = None
+    saved_pages: list[str] = Field(default_factory=list)
 
     @property
     def passed(self) -> bool:
@@ -83,7 +85,13 @@ def try_source(
     client: httpx.Client | None = None,
     today: date | None = None,
     llm_client: ModelClient | None = None,
+    save_pages: Path | None = None,
 ) -> TryReport:
+    """Fetch and extract ``source`` without storing anything.
+
+    ``save_pages`` names a scratch directory for the fetched pages, so whoever repairs a
+    mapping can read the page the source returns today.
+    """
     assert project.schema is not None
     report = TryReport(source_id=source.id, mode=source.extract.mode)
     session = None
@@ -99,6 +107,8 @@ def try_source(
         selectors = selector_schema(project, source)
         fetcher = Fetcher(source, user_agent=project.config.user_agent, cache=None, client=client)
         pages = fetch_pages(fetcher, source)
+        if save_pages is not None:
+            report.saved_pages = write_pages(pages, save_pages)
         result = extract_pages(project, source, pages, today, selectors, session)
     except SourceError as error:
         report.error_kind, report.error = error.kind.value, str(error)
@@ -122,6 +132,22 @@ def try_source(
         report.model_calls, report.cost_eur = session.calls, round(session.cost_eur, 6)
     _judge(report, source, result.records, result.rejections)
     return report
+
+
+EXTENSIONS = {"html": ".html", "json": ".json", "xml": ".xml", "calendar": ".ics", "csv": ".csv"}
+
+
+def write_pages(pages: list[Response], directory: Path) -> list[str]:
+    """Write each fetched page as ``<n>.<ext>`` and return the paths."""
+    directory.mkdir(parents=True, exist_ok=True)
+    written = []
+    for index, page in enumerate(pages, start=1):
+        kind = (page.content_type or "").lower()
+        ext = next((e for key, e in EXTENSIONS.items() if key in kind), ".txt")
+        path = directory / f"{index:02d}{ext}"
+        path.write_bytes(page.body)
+        written.append(str(path))
+    return written
 
 
 def _judge(report: TryReport, source: SourceConfig, records: list, rejections: list) -> None:

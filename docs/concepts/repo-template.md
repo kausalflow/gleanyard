@@ -17,6 +17,7 @@ cd my-events && git init && gleanyard validate
 | `CLAUDE.md` | The procedures for an AI assistant: research, set up, repair, retire. |
 | `.github/workflows/collect.yml` | Daily collect and export; commits `status.json` and the records. |
 | `.github/workflows/validate.yml` | Runs `gleanyard validate` on every pull request. |
+| `.github/workflows/repair.yml` | Opt-in: drafts a fix for a broken source as a pull request ([automatic repair](auto-repair.md)). |
 | `NOTICE` | Credits crawl4ai, which the setup procedure may use. |
 
 ## The assistant works through pull requests
@@ -30,7 +31,8 @@ robots.txt or bot protection, and it never edits generated data.
 - **Set up a source** drafts the file with `scaffold`, tries the modes in order, pins the first
   one that makes `try` print `PASS`, and puts the `try --markdown` report in the pull request.
 - **Repair** starts from a `repair` issue, reproduces with `try` and `collect --from-cache`,
-  and fixes the smallest thing; switching the pinned mode is proposed, never automatic.
+  and fixes the smallest thing; switching the pinned mode is proposed, never automatic. The
+  `repair` workflow can run it unattended; see [automatic repair](auto-repair.md).
 
 ## Scheduled runs
 
@@ -38,9 +40,10 @@ The `collect` workflow validates the config, collects, exports, commits `status.
 `data/records`, `data/review` and `exports/`, and keeps the raw cache between runs with the
 Actions cache. If any source is failing or `degraded` (see
 [Health](status.md#checks-on-a-run-that-worked)) it opens (or comments on) one issue labelled
-`repair` that lists those sources, then fails the run so it shows red. Sources that use `llm` need the
-provider's API key as a repository secret, passed to the `collect` step as an environment
-variable; other repos need no secret.
+`repair` that lists those sources, then fails the run so it shows red. With
+[automatic repair](auto-repair.md) turned on, the `repair` workflow then proposes a fix.
+Sources that use `llm` need the provider's API key as a repository secret, passed to the
+`collect` step as an environment variable; other repos need no secret.
 
 GitHub disables scheduled workflows in a public repo after 60 days without commits. The
 daily commit of `status.json` keeps the schedule alive, and a stalled `generated_at` in that

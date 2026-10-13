@@ -25,6 +25,7 @@ from gleanyard.init import init_hub, init_project
 from gleanyard.mapping import draft_mapping
 from gleanyard.probe import probe as probe_url
 from gleanyard.project import load_project
+from gleanyard.repair import check_repair, plan_repair
 from gleanyard.run import collect_source, export_project
 from gleanyard.scaffold import scaffold as scaffold_url
 from gleanyard.schema import ProjectSchema
@@ -34,6 +35,10 @@ from gleanyard.tryout import try_source
 app = typer.Typer(no_args_is_help=True, add_completion=False, help=__doc__)
 hub_app = typer.Typer(no_args_is_help=True, help="The status hub: watch many collection repos.")
 app.add_typer(hub_app, name="hub")
+repair_app = typer.Typer(
+    no_args_is_help=True, help="Automated repair: which sources to fix, and whether a fix holds."
+)
+app.add_typer(repair_app, name="repair")
 
 JsonFlag = Annotated[bool, typer.Option("--json", help="Print machine-readable JSON.")]
 ProjectDir = Annotated[
@@ -222,13 +227,17 @@ def try_command(
     markdown: Annotated[
         bool, typer.Option("--markdown", help="Print a PR description instead.")
     ] = False,
+    save_pages: Annotated[
+        Path | None,
+        typer.Option("--save-pages", help="Also write the fetched pages to this directory."),
+    ] = None,
 ) -> None:
     """Live dry run of one source: sample records, fill rates and a pass/fail verdict."""
     project = _loaded(root)
     known = {item.id: item for item in project.sources}
     if source not in known:
         raise typer.BadParameter(f"unknown source: {source}")
-    report = try_source(project, known[source])
+    report = try_source(project, known[source], save_pages=save_pages)
     if as_json:
         typer.echo(report.model_dump_json(indent=2))
     elif markdown:
@@ -241,6 +250,8 @@ def try_command(
             typer.echo(f"  {name:16} {rate:6.0%}")
         for row in report.samples[:3]:
             typer.echo(f"  sample: {json.dumps(row, ensure_ascii=False)[:200]}")
+        for path in report.saved_pages:
+            typer.echo(f"  saved: {path}")
     if not report.passed:
         raise typer.Exit(1)
 
@@ -532,3 +543,51 @@ def hub_init(
         raise typer.Exit(1) from error
     typer.echo(f"created hub {hub!r} in {directory} ({len(written)} files)")
     typer.echo("next: push it to GitHub, follow its README, then run `gleanyard hub check`")
+
+
+@repair_app.command("plan")
+def repair_plan(root: ProjectDir = Path("."), as_json: JsonFlag = False) -> None:
+    """List the failing or degraded sources an automated repair may attempt, and the rest."""
+    plan = plan_repair(_loaded(root))
+    if as_json:
+        typer.echo(plan.model_dump_json(indent=2))
+        return
+    for target in plan.targets:
+        typer.echo(f"repair  {target.id}: {', '.join(target.reasons)}  {target.detail or ''}")
+    for item in plan.skipped:
+        typer.echo(f"skip    {item.id}: {item.reason}")
+    if not plan.targets and not plan.skipped:
+        typer.echo("nothing to repair")
+
+
+@repair_app.command("check")
+def repair_check(
+    root: ProjectDir = Path("."),
+    base: Annotated[str, typer.Option(help="Git ref the changes are compared with.")] = "HEAD",
+    as_json: JsonFlag = False,
+    markdown: Annotated[
+        bool, typer.Option("--markdown", help="Print a PR description instead.")
+    ] = False,
+) -> None:
+    """Judge uncommitted changes as a repair. Exit 0 ready, 1 draft only, 2 not proposable."""
+    try:
+        result = check_repair(root, base)
+    except RuntimeError as error:
+        typer.echo(f"error: {error}", err=True)
+        raise typer.Exit(2) from error
+    if as_json:
+        typer.echo(json.dumps(result.summary(), indent=2))
+    elif markdown:
+        typer.echo(result.markdown())
+    else:
+        typer.echo("ready" if result.ready else "draft" if result.proposable else "not proposable")
+        for problem in result.problems:
+            typer.echo(f"  problem: {problem}")
+        for item in result.sources:
+            typer.echo(f"  {'PASS' if item.passed else 'FAIL'}  {item.id}")
+            for problem in item.problems:
+                typer.echo(f"        {problem}")
+        for note in result.notes:
+            typer.echo(f"  note: {note}")
+    if not result.ready:
+        raise typer.Exit(1 if result.proposable else 2)

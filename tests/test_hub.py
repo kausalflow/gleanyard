@@ -17,10 +17,10 @@ NOW = datetime(2026, 10, 12, 8, 0, tzinfo=UTC)  # a Monday
 runner = CliRunner()
 
 
-def status(*sources: SourceStatus, age_hours: float = 2) -> bytes:
+def status(*sources: SourceStatus, age_hours: float = 2, now: datetime = NOW) -> bytes:
     return (
         ProjectStatus(
-            generated_at=NOW - timedelta(hours=age_hours),
+            generated_at=now - timedelta(hours=age_hours),
             schema_name="event",
             healthy=all(s.health == "ok" for s in sources),
             sources=list(sources),
@@ -165,7 +165,11 @@ def test_unreadable_repo_alerts():
 def test_issues_open_once_stay_quiet_and_close_on_recovery():
     hub = "o/hub"
     github = FakeGitHub(
-        files={"o/a": status(source("down", "failing")), "o/b": status(source("x"))}
+        files={
+            # `hub run` compares with the real clock, so these reports must be recent
+            "o/a": status(source("down", "failing"), now=datetime.now(UTC)),
+            "o/b": status(source("x"), now=datetime.now(UTC)),
+        }
     )
     alerts = compute_alerts(collect_state(config(), github, NOW), config())
     first = sync_issues(github, hub, alerts)
@@ -258,7 +262,11 @@ def test_cli_hub_run_dry_run(tmp_path, monkeypatch):
     import gleanyard.cli as cli_module
 
     github = FakeGitHub(
-        files={"o/a": status(source("down", "failing")), "o/b": status(source("x"))}
+        files={
+            # `hub run` compares with the real clock, so these reports must be recent
+            "o/a": status(source("down", "failing"), now=datetime.now(UTC)),
+            "o/b": status(source("x"), now=datetime.now(UTC)),
+        }
     )
     monkeypatch.setattr(cli_module, "HttpGitHub", lambda token: github)
     monkeypatch.setenv("GH_TOKEN", "t")
@@ -408,7 +416,11 @@ def test_cli_hub_run_without_a_token_for_url_only_hubs(tmp_path, monkeypatch):
     url = "https://m.example/status.json"
     monkeypatch.delenv("GH_TOKEN", raising=False)
     monkeypatch.delenv("GITHUB_TOKEN", raising=False)
-    monkeypatch.setattr(state_module, "fetch_url", fetcher({url: status(source("x", "failing"))}))
+    monkeypatch.setattr(
+        state_module,
+        "fetch_url",
+        fetcher({url: status(source("x", "failing"), now=datetime.now(UTC))}),
+    )
     (tmp_path / "hub.yaml").write_text(f"repos: [{url}]\ndigest_weekday: null\n")
     args = ["hub", "run", "--config", str(tmp_path / "hub.yaml"), "--state"]
     args += [str(tmp_path / "state.json"), "--dry-run", "--json"]
