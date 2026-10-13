@@ -28,6 +28,7 @@ def test_init_creates_a_valid_project(tmp_path):
         ".gitignore",
         ".github/workflows/collect.yml",
         ".github/workflows/validate.yml",
+        ".github/workflows/repair.yml",
         "sources/.gitkeep",
         "mappings/.gitkeep",
         "candidates/.gitkeep",
@@ -80,5 +81,10 @@ def test_template_ships_in_the_built_wheel(tmp_path):
         capture_output=True,
     )
     names = zipfile.ZipFile(next(out.glob("*.whl"))).namelist()
-    for expected in ("dot-github/workflows/collect.yml", "dot-gitignore", "CLAUDE.md"):
+    for expected in (
+        "dot-github/workflows/collect.yml",
+        "dot-github/workflows/repair.yml",
+        "dot-gitignore",
+        "CLAUDE.md",
+    ):
         assert any(name.endswith(f"template/{expected}") for name in names), expected

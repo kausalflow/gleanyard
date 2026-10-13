@@ -48,6 +48,12 @@ holds the schema (age range, free or priced, indoor or outdoor, Berlin postcodes
 research brief. Its sources are found with the setup procedure on a machine with network
 access, in a repo of its own.
 
+## Since then
+
+- Automatic repair (0.4.0): the template's opt-in `repair` workflow lets a coding agent draft
+  a fix for a broken source, and `gleanyard repair check` decides without a model whether it
+  becomes a pull request.
+
 ## Decisions so far
 
 - Recurring sources are the focus; one-off research is possible through `llm` mode but not
