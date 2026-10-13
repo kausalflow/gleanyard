@@ -12,7 +12,7 @@ cd my-events && git init && gleanyard validate
 | --- | --- |
 | `schema.yaml` | A starter schema (title, source URL, description) for you to replace. |
 | `research.md` | The idea and scope; the assistant reads it before proposing sources. |
-| `gleanyard.yaml` | Project settings: user agent, excluded hosts, rights policy. |
+| `gleanyard.yaml` | Project settings: user agent, excluded hosts, rights policy, [DataHerb](dataherb.md) listing. |
 | `sources/`, `mappings/`, `candidates/`, `evidence/`, `tests/fixtures/` | Where the assistant's pull requests put their work. |
 | `CLAUDE.md` | The procedures for an AI assistant: research, set up, repair, retire. |
 | `.github/workflows/collect.yml` | Daily collect and export; commits `status.json` and the records. |

@@ -2,3 +2,6 @@
 schema_version: 1
 user_agent: "{{project}} (+https://github.com/OWNER/{{project}})"   # say who you are; add a contact URL
 excluded_hosts: []        # hosts research must not propose
+dataherb:                 # list this project in a DataHerb catalog (https://dataherb.github.io); delete to turn off
+  id: "{{project}}"
+  expected_interval: P1D  # how often collect runs; the catalog flags the data as stale after this

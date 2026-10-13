@@ -7,10 +7,11 @@ extraction mode is pinned here; scheduled runs never switch it on their own.
 
 from __future__ import annotations
 
+import re
 from enum import StrEnum
 from typing import Annotated, Any, Literal
 
-from pydantic import Field, HttpUrl, model_validator
+from pydantic import Field, HttpUrl, field_validator, model_validator
 
 from gleanyard.rights import Coverage, Retention, RightsPolicy, SourceRights
 from gleanyard.schema import StrictModel
@@ -238,6 +239,53 @@ class StorageConfig(StrictModel):
     root: str = "data"
 
 
+_ISO_DURATION = re.compile(
+    r"P(?!$)(\d+Y)?(\d+M)?(\d+W)?(\d+D)?(T(?=\d)(\d+H)?(\d+M)?(\d+(\.\d+)?S)?)?"
+)
+
+
+class DataherbConfig(StrictModel):
+    """Describe the project for a DataHerb catalog (https://dataherb.github.io)."""
+
+    id: str | None = Field(
+        default=None,
+        pattern=r"^[A-Za-z0-9][A-Za-z0-9._-]*$",
+        description="Dataset and job id in the catalog; defaults to the project folder name.",
+    )
+    name: str | None = Field(default=None, description="Title; defaults to the schema name.")
+    description: str | None = Field(default=None, description="Defaults to the schema description.")
+    tags: list[str] = Field(default_factory=list)
+    owner: str | None = Field(default=None, description="Who to ask about the data.")
+    license: str | None = Field(
+        default=None,
+        description="Licence of the export; defaults to the one licence its sources share.",
+    )
+    uri: str | None = Field(
+        default=None,
+        description="Repo URL; defaults to the GitHub repository when run in GitHub Actions.",
+    )
+    metadata: str = Field(default="dataherb.json", description="Dataset metadata path.")
+    status_dir: str = Field(
+        default="_dataherb/status",
+        description="Status prefix; the job status is written to <status_dir>/<id>/latest.json.",
+    )
+    expected_interval: str = Field(
+        default="P1D",
+        description="ISO 8601 duration between scheduled runs; the catalog flags staleness.",
+    )
+    max_duration: str | None = Field(
+        default=None,
+        description="ISO 8601 duration after which a running job counts as stuck.",
+    )
+
+    @field_validator("expected_interval", "max_duration")
+    @classmethod
+    def check_duration(cls, value: str | None) -> str | None:
+        if value is not None and not _ISO_DURATION.fullmatch(value):
+            raise ValueError(f"{value!r} is not an ISO 8601 duration such as P1D or PT6H")
+        return value
+
+
 class ProjectConfig(StrictModel):
     """Optional ``gleanyard.yaml`` at the repo root; every key has a default."""
 
@@ -253,6 +301,10 @@ class ProjectConfig(StrictModel):
     )
     status: str = Field(
         default="status.json", description="Health report path, read by the status hub."
+    )
+    dataherb: DataherbConfig | None = Field(
+        default=None,
+        description="Also write DataHerb dataset metadata on export and a job status on collect.",
     )
 
     model_config = {"extra": "forbid", "populate_by_name": True}
