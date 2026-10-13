@@ -16,7 +16,7 @@ with per-run cost and page caps and a page-hash cache, and PDF delivery through 
 sources are supported through `pagination`, with `pagination_changed` when paging misbehaves. A
 source `filter` guards URL filters and raises `filter_ignored` when the source stops honouring them.
 
-## 3. Project template (in progress)
+## 3. Project template (done)
 
 Done: the commands that turn setup into checks (`probe`, `check`, `scaffold`, `try`) and
 `gleanyard init`, which writes the repo template. 
@@ -27,8 +27,10 @@ mappings with crawl4ai at setup and repair only; crawl4ai never runs in schedule
 
 ## 4. Status hub (done)
 
-Done: `gleanyard hub run` reads the repos and keeps one issue per active problem,
-`hub build` renders the dashboard, and `hub init` writes the hub repo. 
+Done: `gleanyard hub run` reads the projects and keeps one issue per active problem,
+`hub build` renders the dashboard and a job summary, `hub init` writes the hub repo, and
+`hub check` says what its setup is missing. Projects are listed, found by topic, or read from a
+status.json URL with no token. 
 A central repo that reads each project's `status.json`, publishes a dashboard on GitHub
 Pages, and opens GitHub issues on changes: a source starts failing, record counts drop, a
 scheduled run is missed, or a setup or repair PR waits too long.

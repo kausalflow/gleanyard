@@ -1,7 +1,8 @@
-# The collection repos this hub watches, as owner/name.
-repos:
+# The projects this hub watches: owner/name for a GitHub repo, or the URL of a project's
+# status.json (read with no GitHub token). A URL entry can also be {name: ..., url: ...}.
 {{repos}}
-missed_run_hours: 36     # alert when a repo's status.json is older than this
+{{discover}}
+missed_run_hours: 36     # alert when a project's status.json is older than this
 pr_waiting_days: 7       # alert when a setup or repair pull request waits this long
 pr_labels: [setup, repair]
 digest_weekday: 0        # Monday; null turns the weekly digest off

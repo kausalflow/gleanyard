@@ -15,9 +15,10 @@ from gleanyard import __version__
 from gleanyard.config import ProjectConfig, SourceConfig
 from gleanyard.dataherb import write_job_status, write_metadata
 from gleanyard.errors import ConfigError, SourceError
-from gleanyard.hub.alerts import compute_alerts, sync_issues, weekly_digest
+from gleanyard.hub.alerts import SyncResult, compute_alerts, sync_issues, weekly_digest
+from gleanyard.hub.check import check_hub
 from gleanyard.hub.config import load_hub_config
-from gleanyard.hub.dashboard import render_dashboard
+from gleanyard.hub.dashboard import render_dashboard, render_summary
 from gleanyard.hub.github import HttpGitHub
 from gleanyard.hub.state import HubState, collect_state
 from gleanyard.init import init_hub, init_project
@@ -380,6 +381,18 @@ def init(
         raise typer.Exit(1) from error
     typer.echo(f"created {project!r} in {directory} ({len(written)} files)")
     typer.echo("next: edit schema.yaml and research.md, then `gleanyard validate`")
+    typer.echo("on GitHub, add the topic `gleanyard` to the repo so a status hub finds it")
+
+
+def _hub_clients() -> tuple[HttpGitHub | None, HttpGitHub | None]:
+    """The client that reads the projects (GH_TOKEN, e.g. a read-only HUB_TOKEN) and the one
+    that writes issues in the hub repo (the workflow's own GITHUB_TOKEN when there is one)."""
+    read_token = os.environ.get("GH_TOKEN") or os.environ.get("GITHUB_TOKEN")
+    write_token = os.environ.get("GITHUB_TOKEN") or os.environ.get("GH_TOKEN")
+    return (
+        HttpGitHub(read_token) if read_token else None,
+        HttpGitHub(write_token) if write_token else None,
+    )
 
 
 @hub_app.command("run")
@@ -403,18 +416,27 @@ def hub_run(
     except ConfigError as error:
         typer.echo(str(error), err=True)
         raise typer.Exit(2) from error
-    token = os.environ.get("GH_TOKEN") or os.environ.get("GITHUB_TOKEN")
+    reader, writer = _hub_clients()
     target = hub_repo or os.environ.get("GITHUB_REPOSITORY")
-    if not token or not (target or dry_run):
-        typer.echo("set GH_TOKEN and --hub-repo (or GITHUB_REPOSITORY)", err=True)
+    if not (target or dry_run):
+        typer.echo("set --hub-repo (or GITHUB_REPOSITORY), or use --dry-run", err=True)
         raise typer.Exit(2)
-    github = HttpGitHub(token or "")
-    state = collect_state(config, github)
+    if (reader is None and config.needs_github) or (writer is None and not dry_run):
+        typer.echo(
+            "set GH_TOKEN: reading repos and opening issues need the GitHub API "
+            "(a hub that only lists status.json URLs can --dry-run without one)",
+            err=True,
+        )
+        raise typer.Exit(2)
+    state = collect_state(config, reader)
     state_path.parent.mkdir(parents=True, exist_ok=True)
     state_path.write_text(state.model_dump_json(indent=2) + "\n", encoding="utf-8")
     alerts = compute_alerts(state, config)
-    result = sync_issues(github, target or "", alerts, dry_run=dry_run)
-    digest = weekly_digest(github, target or "", state, config, dry_run=dry_run)
+    if writer is None:  # a token-free dry run: nothing to sync
+        result, digest = SyncResult(opened=[alert.key for alert in alerts]), None
+    else:
+        result = sync_issues(writer, target or "", alerts, dry_run=dry_run)
+        digest = weekly_digest(writer, target or "", state, config, dry_run=dry_run)
     summary = {
         "repos": [{"repo": r.repo, "level": r.level} for r in state.repos],
         "alerts": [alert.key for alert in alerts],
@@ -441,7 +463,7 @@ def hub_build(
     out: Annotated[Path, typer.Option(help="Output directory for the static site.")] = Path("site"),
     title: Annotated[str, typer.Option(help="Page title.")] = "Collection status",
 ) -> None:
-    """Render the snapshot as a static dashboard page for GitHub Pages."""
+    """Render the snapshot as a dashboard page (index.html) and a Markdown summary (summary.md)."""
     try:
         state = HubState.model_validate_json(state_path.read_text(encoding="utf-8"))
     except (OSError, ValueError) as error:
@@ -450,22 +472,63 @@ def hub_build(
     out.mkdir(parents=True, exist_ok=True)
     (out / "index.html").write_text(render_dashboard(state, title), encoding="utf-8")
     (out / "state.json").write_text(state.model_dump_json(indent=2) + "\n", encoding="utf-8")
-    typer.echo(f"wrote {out / 'index.html'}")
+    (out / "summary.md").write_text(render_summary(state, title), encoding="utf-8")
+    typer.echo(f"wrote {out / 'index.html'} and {out / 'summary.md'}")
+
+
+@hub_app.command("check")
+def hub_check(
+    config_path: Annotated[Path, typer.Option("--config", help="hub.yaml")] = Path("hub.yaml"),
+    hub_repo: Annotated[
+        str | None,
+        typer.Option("--hub-repo", help="owner/name of the hub; default: $GITHUB_REPOSITORY."),
+    ] = None,
+    as_json: JsonFlag = False,
+) -> None:
+    """Check the hub's setup: config, token, every project's status.json, Pages. Exit 1 if not."""
+    reader, writer = _hub_clients()
+    target = hub_repo or os.environ.get("GITHUB_REPOSITORY")
+    lines = check_hub(config_path, reader, target, hub_github=writer)
+    if as_json:
+        typer.echo(json.dumps([line.model_dump() for line in lines], indent=2))
+    else:
+        for line in lines:
+            typer.echo(f"{'ok  ' if line.ok else 'FAIL'}  {line.what}")
+            if line.fix:
+                typer.echo(f"      fix: {line.fix}")
+    if not all(line.ok for line in lines):
+        raise typer.Exit(1)
 
 
 @hub_app.command("init")
 def hub_init(
     directory: Annotated[Path, typer.Argument(help="New hub directory (empty or missing).")],
     repo: Annotated[
-        list[str] | None, typer.Option("--repo", help="Collection repo owner/name (repeatable).")
+        list[str] | None,
+        typer.Option("--repo", help="Project as owner/name or a status.json URL (repeatable)."),
     ] = None,
+    owner: Annotated[
+        str | None,
+        typer.Option(help="Also watch every repo of this user or org with the topic `gleanyard`."),
+    ] = None,
+    pages: Annotated[
+        bool,
+        typer.Option(
+            "--pages/--no-pages",
+            help="Publish the dashboard on GitHub Pages (public on most plans).",
+        ),
+    ] = False,
     name: Annotated[str | None, typer.Option(help="Hub name; default: the directory name.")] = None,
 ) -> None:
-    """Create the status hub repo: hub.yaml, a workflow, and a Pages dashboard."""
+    """Create the status hub repo: hub.yaml, a workflow, and a dashboard."""
     hub = name or directory.resolve().name.lower().replace("_", "-")
+    if not repo and not owner:
+        typer.echo("give --owner (to find repos by topic) or at least one --repo", err=True)
+        raise typer.Exit(2)
     try:
-        written = init_hub(directory, hub, repo or [])
+        written = init_hub(directory, hub, repo or [], owner=owner, pages=pages)
     except ConfigError as error:
         typer.echo(str(error), err=True)
         raise typer.Exit(1) from error
     typer.echo(f"created hub {hub!r} in {directory} ({len(written)} files)")
+    typer.echo("next: push it to GitHub, follow its README, then run `gleanyard hub check`")

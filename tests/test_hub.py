@@ -35,10 +35,21 @@ def source(id_: str, health: str = "ok", **kw) -> SourceStatus:
 
 
 class FakeGitHub:
-    def __init__(self, files=None, pulls=None):
+    def __init__(self, files=None, pulls=None, topics=None, pages=None):
         self.files, self.pulls = files or {}, pulls or {}
+        self.topics, self.pages = topics or {}, pages or {}
         self.issues: dict[int, dict] = {}
         self.log: list[tuple] = []
+
+    def find_repos(self, owner, topic):
+        return [
+            repo
+            for repo, tags in self.topics.items()
+            if repo.startswith(owner + "/") and topic in tags
+        ]
+
+    def pages_source(self, repo):
+        return self.pages.get(repo)
 
     def get_file(self, repo, path):
         return self.files.get(repo)
@@ -329,4 +340,140 @@ def test_cli_hub_build_and_init(tmp_path):
     assert any("gleanyard hub run" in run for run in runs)
     assert any("gleanyard hub build" in run for run in runs)
     assert (root / ".gitignore").exists() and "{{" not in (root / "README.md").read_text()
-    assert runner.invoke(app, ["hub", "init", str(root)]).exit_code == 1  # not empty
+    assert runner.invoke(app, ["hub", "init", str(root), "--repo", "o/a"]).exit_code == 1
+    assert runner.invoke(app, ["hub", "init", str(tmp_path / "x")]).exit_code == 2  # no repos
+
+
+def fetcher(pages):
+    def fetch(url):
+        if url not in pages:
+            raise httpx.HTTPStatusError("404", request=httpx.Request("GET", url), response=None)
+        return pages[url]
+
+    return fetch
+
+
+def test_config_accepts_urls_and_discovery_and_needs_something(tmp_path):
+    raw = "https://raw.githubusercontent.com/o/p/main/status.json"
+    config = HubConfig(
+        repos=["o/a", raw, {"name": "Markets", "url": "https://m.example/status.json"}],
+        discover={"owner": "o"},
+    )
+    assert [(w.name, w.repo, w.url) for w in config.listed()] == [
+        ("o/a", "o/a", None),
+        ("o/p", None, raw),
+        ("Markets", None, "https://m.example/status.json"),
+    ]
+    assert config.discover.topic == "gleanyard" and config.needs_github
+    assert not HubConfig(repos=[raw]).needs_github
+    path = tmp_path / "hub.yaml"
+    path.write_text("missed_run_hours: 12\n")
+    with pytest.raises(ConfigError, match="at least one repo"):
+        load_hub_config(path)
+    path.write_text("repos: [ftp://x]\n")
+    with pytest.raises(ConfigError, match="owner/name or an http"):
+        load_hub_config(path)
+
+
+def test_state_reads_urls_without_github_and_adds_discovered_repos():
+    url = "https://m.example/status.json"
+    config = HubConfig(repos=["o/a", url], discover={"owner": "o"}, digest_weekday=None)
+    github = FakeGitHub(
+        files={"o/a": status(source("x")), "o/found": status(source("y", "failing"))},
+        topics={"o/found": ["gleanyard"], "o/a": ["gleanyard"], "o/other": ["misc"]},
+    )
+    state = collect_state(config, github, NOW, fetch=fetcher({url: status(source("z"))}))
+    assert [r.repo for r in state.repos] == ["o/a", "m.example", "o/found"]
+    assert [r.level for r in state.repos] == ["green", "green", "red"]
+    assert not state.repos[1].on_github and state.repos[1].pulls == []
+    alone = collect_state(HubConfig(repos=[url]), None, NOW, fetch=fetcher({}))
+    assert "could not fetch" in alone.repos[0].problem
+    keys = {a.key for a in compute_alerts(alone, HubConfig(repos=[url]))}
+    assert keys == {"m.example:no-status"}
+
+
+def test_discovery_failure_is_an_alert():
+    class Broken(FakeGitHub):
+        def find_repos(self, owner, topic):
+            raise httpx.ConnectError("down")
+
+    state = collect_state(HubConfig(discover={"owner": "o"}), Broken(), NOW)
+    alerts = compute_alerts(state, HubConfig(discover={"owner": "o"}))
+    assert [a.key for a in alerts] == ["hub:problem"] and "could not search" in alerts[0].body
+
+
+def test_cli_hub_run_without_a_token_for_url_only_hubs(tmp_path, monkeypatch):
+    import gleanyard.hub.state as state_module
+
+    url = "https://m.example/status.json"
+    monkeypatch.delenv("GH_TOKEN", raising=False)
+    monkeypatch.delenv("GITHUB_TOKEN", raising=False)
+    monkeypatch.setattr(state_module, "fetch_url", fetcher({url: status(source("x", "failing"))}))
+    (tmp_path / "hub.yaml").write_text(f"repos: [{url}]\ndigest_weekday: null\n")
+    args = ["hub", "run", "--config", str(tmp_path / "hub.yaml"), "--state"]
+    args += [str(tmp_path / "state.json"), "--dry-run", "--json"]
+    result = runner.invoke(app, args)
+    assert result.exit_code == 0, result.output
+    assert json.loads(result.output)["alerts"] == ["m.example:x:failing"]
+    (tmp_path / "hub.yaml").write_text("repos: [o/a]\n")
+    assert runner.invoke(app, args).exit_code == 2  # a repo needs a token
+
+
+def test_hub_check_reports_each_problem_with_a_fix(tmp_path):
+    from gleanyard.hub.check import check_hub
+
+    url = "https://m.example/status.json"
+    (tmp_path / "hub.yaml").write_text(f"repos: [o/a, o/private, {url}]\ndiscover: {{owner: o}}\n")
+    workflow = tmp_path / "hub.yml"
+    workflow.write_text("steps: [{uses: actions/deploy-pages@v4}]\n")
+    github = FakeGitHub(files={"o/a": status(source("x"))}, pages={"o/hub": None})
+    lines = check_hub(
+        tmp_path / "hub.yaml", github, "o/hub", workflow, fetcher({url: status()}), NOW
+    )
+    failed = {line.what.split(":")[0]: line for line in lines if not line.ok}
+    assert "no repos of o have the topic `gleanyard`" in failed
+    assert "topic" in failed["no repos of o have the topic `gleanyard`"].fix
+    assert "token read access" in failed["o/private"].fix
+    assert "Pages" in lines[-1].what and "GitHub Actions" in lines[-1].fix
+    assert any(line.ok and line.what.startswith("o/a: 1 sources") for line in lines)
+    assert any(line.ok and line.what.startswith("m.example") for line in lines)
+
+    workflow.write_text("steps: []\n")
+    no_token = check_hub(tmp_path / "hub.yaml", None, None, workflow, fetcher({}), NOW)
+    assert "no GitHub token" in no_token[1].what and "status.json URL" in no_token[1].fix
+    assert "could not fetch" in no_token[2].what  # URL entries are still checked
+
+    (tmp_path / "bad.yaml").write_text("repos: oops\n")
+    assert not check_hub(tmp_path / "bad.yaml", None)[0].ok
+
+
+def test_hub_init_alerts_only_by_default_and_pages_on_request(tmp_path):
+    import yaml
+
+    quiet = tmp_path / "quiet"
+    assert runner.invoke(app, ["hub", "init", str(quiet), "--owner", "o"]).exit_code == 0
+    config = load_hub_config(quiet / "hub.yaml")
+    assert config.repos == [] and config.discover.owner == "o"
+    workflow = yaml.safe_load((quiet / ".github/workflows/hub.yml").read_text())
+    uses = [step.get("uses", "") for step in workflow["jobs"]["hub"]["steps"]]
+    assert "pages" not in workflow["permissions"] and not any("pages" in u for u in uses)
+    assert any("upload-artifact" in u for u in uses)
+    assert "Nothing is published" in (quiet / "README.md").read_text()
+
+    public = tmp_path / "public"
+    created = runner.invoke(app, ["hub", "init", str(public), "--repo", "o/a", "--pages"])
+    assert created.exit_code == 0, created.output
+    workflow = yaml.safe_load((public / ".github/workflows/hub.yml").read_text())
+    assert workflow["permissions"]["pages"] == "write"
+    assert workflow["jobs"]["hub"]["environment"]["name"] == "github-pages"
+    assert "public" in (public / "README.md").read_text()
+
+
+def test_summary_lists_problems_for_the_job_summary():
+    from gleanyard.hub.dashboard import render_summary
+
+    text = render_summary(sample_state(), "Hub")
+    assert text.startswith("# Hub")
+    assert "🔴 **o/a**: 2 sources, 20 records, 1 need attention" in text
+    assert "`down` failing: <script>x</script>" in text
+    assert "waiting: [#4 Repair <b>x</b>](https://github.com/o/a/pull/4)" in text

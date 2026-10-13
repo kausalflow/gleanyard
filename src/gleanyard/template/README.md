@@ -24,4 +24,8 @@ gleanyard status
 ```
 
 The `collect` workflow runs daily, commits `status.json` and the records, and opens a
-`repair` issue when a source fails. Changes to sources arrive as pull requests.
+`repair` issue when a source fails or is degraded. Changes to sources arrive as pull requests.
+
+To watch this project together with others, add the topic `gleanyard` to the repo on GitHub:
+a [status hub](https://kausalflow.github.io/gleanyard/concepts/status-hub/) set up with
+`gleanyard hub init --owner <you>` finds it by that topic.

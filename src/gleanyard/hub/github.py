@@ -26,6 +26,8 @@ class Issue(BaseModel):
 
 
 class GitHub(Protocol):
+    def find_repos(self, owner: str, topic: str) -> list[str]: ...
+    def pages_source(self, repo: str) -> str | None: ...
     def get_file(self, repo: str, path: str) -> bytes | None: ...
     def open_pulls(self, repo: str) -> list[PullRequest]: ...
     def open_issues(self, repo: str, label: str) -> list[Issue]: ...
@@ -47,6 +49,34 @@ class HttpGitHub:
     def _request(self, method: str, path: str, **kwargs) -> httpx.Response:
         headers = {**self.headers, **kwargs.pop("headers", {})}
         return self.client.request(method, path, headers=headers, **kwargs)
+
+    def find_repos(self, owner: str, topic: str) -> list[str]:
+        """Repos of ``owner`` with ``topic`` that the token can see, private ones included."""
+        names: list[str] = []
+        for page in range(1, 11):
+            response = self._request(
+                "GET",
+                "/search/repositories",
+                params={
+                    "q": f"topic:{topic} user:{owner} archived:false",
+                    "per_page": 100,
+                    "page": page,
+                },
+            )
+            response.raise_for_status()
+            items = response.json().get("items", [])
+            names += [item["full_name"] for item in items]
+            if len(items) < 100:
+                break
+        return sorted(names)
+
+    def pages_source(self, repo: str) -> str | None:
+        """How the repo's Pages site is built (``workflow`` or ``legacy``), or None if off."""
+        response = self._request("GET", f"/repos/{repo}/pages")
+        if response.status_code == 404:
+            return None
+        response.raise_for_status()
+        return response.json().get("build_type")
 
     def get_file(self, repo: str, path: str) -> bytes | None:
         response = self._request(

@@ -30,6 +30,15 @@ class Alert(BaseModel):
 def compute_alerts(state: HubState, config: HubConfig, now: datetime | None = None) -> list[Alert]:
     now = now or state.generated_at
     alerts: list[Alert] = []
+    if state.problems:
+        alerts.append(
+            Alert(
+                key="hub:problem",
+                kind="hub_problem",
+                title="The hub could not find every project",
+                body="\n".join(f"- {problem}" for problem in state.problems),
+            )
+        )
     for repo in state.repos:
         alerts += _repo_alerts(repo, config, now)
     return alerts
