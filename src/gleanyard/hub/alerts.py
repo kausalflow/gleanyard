@@ -14,6 +14,7 @@ from pydantic import BaseModel
 from gleanyard.hub.config import HubConfig
 from gleanyard.hub.github import GitHub
 from gleanyard.hub.state import HubState, RepoState
+from gleanyard.status import SourceStatus
 
 LABEL = "hub-alert"
 MARKER = "<!-- gleanyard-hub:{key} -->"
@@ -77,14 +78,7 @@ def _repo_alerts(repo: RepoState, config: HubConfig, now: datetime) -> list[Aler
                     )
                 )
             elif source.health == "degraded":
-                alerts.append(
-                    Alert(
-                        key=f"{name}:{source.id}:degraded",
-                        kind="count_drop",
-                        title=f"{name}: {source.id} lost records",
-                        body=f"`{source.id}`: {source.note or 'record count dropped'}.",
-                    )
-                )
+                alerts += _degraded_alerts(name, source)
     for pull in repo.pulls:
         waited = now - pull.created_at
         if waited > timedelta(days=config.pr_waiting_days):
@@ -97,6 +91,43 @@ def _repo_alerts(repo: RepoState, config: HubConfig, now: datetime) -> list[Aler
                 )
             )
     return alerts
+
+
+DEGRADED_TITLES = {
+    "record_drop": "lost records",
+    "fill_rate_drop": "fields stopped filling",
+    "rejection_spike": "more records rejected",
+    "unchanged": "data stopped changing",
+}
+
+
+def _degraded_alerts(name: str, source: SourceStatus) -> list[Alert]:
+    """One alert per kind of warning, so a fill-rate drop and a count drop are separate issues."""
+    if not source.warnings:
+        # A report from before per-check warnings: a degraded source meant fewer records.
+        return [
+            Alert(
+                key=f"{name}:{source.id}:degraded",
+                kind="count_drop",
+                title=f"{name}: {source.id} lost records",
+                body=f"`{source.id}`: {source.note or 'record count dropped'}.",
+            )
+        ]
+    kinds: dict[str, list[str]] = {}
+    for check in source.warnings:
+        kinds.setdefault(check.kind, []).append(check.message)
+    return [
+        Alert(
+            key=f"{name}:{source.id}:{kind}",
+            kind=kind,
+            title=f"{name}: {source.id} {DEGRADED_TITLES.get(kind, kind)}",
+            body=f"`{source.id}` ran without errors, but:\n\n"
+            + "\n".join(f"- {message}" for message in messages)
+            + "\n\nCompare with the last good run: `gleanyard collect --from-cache -s "
+            + f"{source.id}`, then follow the Repair procedure in `CLAUDE.md`.",
+        )
+        for kind, messages in kinds.items()
+    ]
 
 
 class SyncResult(BaseModel):

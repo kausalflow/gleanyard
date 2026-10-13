@@ -44,7 +44,10 @@ not seven.
 | Alert | Active while |
 | --- | --- |
 | Source failing | A source's health in `status.json` is `failing`. |
-| Lost records | A source is `degraded`: over 25% fewer records than its last good run. |
+| Lost records | A source has a `record_drop` warning: over 25% fewer records than its last good run. |
+| Fields stopped filling | A source has a `fill_rate_drop` warning, such as dates that stopped parsing. |
+| More records rejected | A source has a `rejection_spike` warning. |
+| Data stopped changing | A source has an `unchanged` warning (only with `expect_change_days`). |
 | Missed run | The report's `generated_at` is older than `missed_run_hours`. |
 | PR waiting | A `setup` or `repair` pull request has been open longer than `pr_waiting_days`. |
 | No report | `status.json` is missing or invalid, or the repo cannot be read. |

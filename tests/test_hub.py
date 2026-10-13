@@ -11,7 +11,7 @@ from gleanyard.hub.alerts import LABEL, compute_alerts, sync_issues, weekly_dige
 from gleanyard.hub.config import HubConfig, load_hub_config
 from gleanyard.hub.github import HttpGitHub, Issue, PullRequest
 from gleanyard.hub.state import collect_state
-from gleanyard.status import ProjectStatus, SourceStatus
+from gleanyard.status import Check, ProjectStatus, SourceStatus
 
 NOW = datetime(2026, 10, 12, 8, 0, tzinfo=UTC)  # a Monday
 runner = CliRunner()
@@ -130,6 +130,20 @@ def test_alerts_cover_failing_degraded_missed_run_and_waiting_pr():
     }
     assert "3 run(s) in a row" in alerts["o/a:down:failing"].body
     assert "9 days" in alerts["o/a#7:waiting"].title
+
+
+def test_degraded_alerts_split_by_warning_kind():
+    warnings = [
+        Check(kind="fill_rate_drop", field="start_date", message="start_date filled in 0%"),
+        Check(kind="fill_rate_drop", field="venue", message="venue filled in 10%"),
+        Check(kind="rejection_spike", message="40% of records rejected, was 0%"),
+    ]
+    github = FakeGitHub(files={"o/a": status(source("s", "degraded", warnings=warnings))})
+    alerts = {a.key: a for a in compute_alerts(collect_state(config(), github, NOW), config())}
+    assert set(alerts) == {"o/a:s:fill_rate_drop", "o/a:s:rejection_spike", "o/b:no-status"}
+    fill = alerts["o/a:s:fill_rate_drop"]
+    assert fill.title == "o/a: s fields stopped filling"
+    assert "- start_date filled in 0%" in fill.body and "- venue filled in 10%" in fill.body
 
 
 def test_unreadable_repo_alerts():

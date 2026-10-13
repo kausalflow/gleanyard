@@ -72,7 +72,9 @@ Trigger: a candidate the owner marked ready.
    `--force` to redraft an existing mapping. The mapping format is documented at
    https://kausalflow.github.io/gleanyard/.
 4. Save one fixture page to `tests/fixtures/<id>.<ext>` (small, public, no personal data).
-5. Set `expect_empty: seasonal` only if the source is empty out of season.
+5. Set `expect_empty: seasonal` only if the source is empty out of season. Set
+   `expect_change_days` (for example 7) on sources whose records should change often, such as
+   event calendars, so a frozen feed is noticed.
 6. Fill `rights` from the terms you read; leave `review_status: pending` and `enabled: false`.
 7. Open a PR whose description is the output of `gleanyard try <id> --markdown`, plus the
    evidence file and your reading of the terms. The owner reviews, sets rights and enables.
@@ -81,7 +83,9 @@ Trigger: a candidate the owner marked ready.
 
 Trigger: a `repair` issue, or `gleanyard status` shows a `failing` or `degraded` source.
 
-1. `gleanyard status --json` and the issue say what failed (`error_kind`). Read the source file.
+1. `gleanyard status --json` and the issue say what failed: `error_kind` for a failing source,
+   `warnings` (`record_drop`, `fill_rate_drop`, `rejection_spike`, `unchanged`) for a degraded
+   one. Read the source file.
 2. Reproduce with `gleanyard try <id>`. Compare with the last good page:
    `gleanyard collect --from-cache -s <id>` re-extracts it without network.
 3. Fix the smallest thing: selectors for `structure_changed`, a key for a feed, the

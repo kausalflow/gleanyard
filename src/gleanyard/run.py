@@ -9,6 +9,7 @@ Storage layout under the project's storage root (``data/`` by default)::
 
 from __future__ import annotations
 
+import hashlib
 import json
 from collections.abc import Callable
 from datetime import date
@@ -44,6 +45,14 @@ class SourceRun(BaseModel):
     pages: int = 0
     model_calls: int = 0
     cost_eur: float = 0.0
+    records_digest: str | None = Field(
+        default=None, description="Hash of the record values, to notice data that never changes."
+    )
+
+
+def digest_records(records: list[OutputRecord]) -> str:
+    values = sorted(json.dumps(record.values, sort_keys=True, default=str) for record in records)
+    return hashlib.sha256("\n".join(values).encode()).hexdigest()
 
 
 def _store(project: Project) -> LocalObjectStore:
@@ -130,6 +139,7 @@ def collect_source(
         pages=len(responses),
         model_calls=session.calls if session else 0,
         cost_eur=round(session.cost_eur, 6) if session else 0.0,
+        records_digest=digest_records(result.records),
     )
 
 
