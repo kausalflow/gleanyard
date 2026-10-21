@@ -11,6 +11,7 @@ from typing import Annotated
 import typer
 
 from gleanyard import __version__
+from gleanyard.badges import write_badges
 from gleanyard.config import ProjectConfig, SourceConfig
 from gleanyard.dataherb import write_job_status, write_metadata
 from gleanyard.errors import ConfigError, SourceError
@@ -190,6 +191,24 @@ def status(root: ProjectDir = Path("."), as_json: JsonFlag = False) -> None:
             typer.echo(f"{item.health:9} {item.id}: {detail}")
     if not report.healthy:
         raise typer.Exit(1)
+
+
+@app.command()
+def badge(
+    root: ProjectDir = Path("."),
+    out: Annotated[Path, typer.Option(help="Directory, relative to the project.")] = Path("badges"),
+    as_json: JsonFlag = False,
+) -> None:
+    """Write README status badges (project.svg, sources/<id>.svg) from status.json."""
+    project = _loaded(root)
+    # Before the first collect every source shows as "not collected yet", not as an error.
+    report = load_status(project) or build_status(project, [])
+    written = write_badges(report, project.root / out)
+    paths = [str(path.relative_to(project.root)) for path in written]
+    if as_json:
+        typer.echo(json.dumps({"written": paths}))
+    else:
+        typer.echo(f"wrote {len(paths)} badge(s) to {out}")
 
 
 @app.command()
