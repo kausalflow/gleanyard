@@ -67,6 +67,10 @@ class TransportError(SourceError):
 
     kind = ErrorKind.TRANSPORT
 
+    def __init__(self, source_id: str, message: str, status_code: int | None = None) -> None:
+        super().__init__(source_id, message)
+        self.status_code = status_code
+
 
 class Blocked(SourceError):
     """The host refused access (robots.txt, 401/403, or a challenge page)."""

@@ -130,7 +130,7 @@ def try_source(
     )
     if session:
         report.model_calls, report.cost_eur = session.calls, round(session.cost_eur, 6)
-    _judge(report, source, result.records, result.rejections)
+    judge(report, source, result.records, result.rejections)
     return report
 
 
@@ -150,7 +150,7 @@ def write_pages(pages: list[Response], directory: Path) -> list[str]:
     return written
 
 
-def _judge(report: TryReport, source: SourceConfig, records: list, rejections: list) -> None:
+def judge(report: TryReport, source: SourceConfig, records: list, rejections: list) -> None:
     candidates = len(records) + len(rejections)
     if not records:
         if source.expect_empty == "seasonal":

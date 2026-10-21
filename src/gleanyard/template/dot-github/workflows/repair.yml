@@ -79,7 +79,7 @@ jobs:
             --max-turns 40
             ${{ vars.GLEANYARD_REPAIR_MODEL && format('--model {0}', vars.GLEANYARD_REPAIR_MODEL) || '' }}
             --add-dir /tmp/gleanyard-pages
-            --allowedTools "Read,Edit,Write,Glob,Grep,Bash(gleanyard try:*),Bash(gleanyard validate:*),Bash(gleanyard status:*),Bash(gleanyard collect --from-cache:*),Bash(gleanyard json-schema:*),Bash(gleanyard repair:*)"
+            --allowedTools "Read,Edit,Write,Glob,Grep,Bash(gleanyard try:*),Bash(gleanyard test:*),Bash(gleanyard validate:*),Bash(gleanyard status:*),Bash(gleanyard collect --from-cache:*),Bash(gleanyard json-schema:*),Bash(gleanyard repair:*)"
             --json-schema '{"type":"object","properties":{"summary":{"type":"string"}},"required":["summary"]}'
       - id: patch
         if: always() && steps.agent.outcome != 'skipped'

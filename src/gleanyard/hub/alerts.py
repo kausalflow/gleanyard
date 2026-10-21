@@ -88,6 +88,8 @@ def _repo_alerts(repo: RepoState, config: HubConfig, now: datetime) -> list[Aler
                 )
             elif source.health == "degraded":
                 alerts += _degraded_alerts(name, source)
+            if source.terms is not None and source.terms.changed:
+                alerts.append(_terms_alert(name, source))
     for pull in repo.pulls:
         waited = now - pull.created_at
         if waited > timedelta(days=config.pr_waiting_days):
@@ -137,6 +139,24 @@ def _degraded_alerts(name: str, source: SourceStatus) -> list[Alert]:
         )
         for kind, messages in kinds.items()
     ]
+
+
+def _terms_alert(name: str, source: SourceStatus) -> Alert:
+    assert source.terms is not None
+    since = f"{source.terms.changed_at:%F}" if source.terms.changed_at else "the last check"
+    return Alert(
+        key=f"{name}:{source.id}:terms_changed",
+        kind="terms_changed",
+        title=f"{name}: {source.id} terms changed",
+        body=(
+            f"The text of these pages differs from the review of {source.terms.reviewed_on} "
+            f"(noticed {since}):\n\n"
+            + "\n".join(f"- {url}" for url in source.terms.changed)
+            + "\n\nRead them again and add a new `evidence/"
+            + f"{source.id}/<date>-terms.yaml`; adjust `rights` if the terms now say otherwise. "
+            "The issue closes after the next `gleanyard terms` run."
+        ),
+    )
 
 
 class SyncResult(BaseModel):

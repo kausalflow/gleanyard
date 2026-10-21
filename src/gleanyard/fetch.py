@@ -68,6 +68,7 @@ class Fetcher:
         max_attempts: int = 3,
         sleep: Callable[[float], None] = time.sleep,
         run_id: str | None = None,
+        extra_hosts: frozenset[str] = frozenset(),
     ) -> None:
         self.source = source
         self.limits = source.fetch
@@ -77,7 +78,7 @@ class Fetcher:
         self.client = client or httpx.Client(timeout=self.limits.timeout_seconds)
         self.max_attempts = max_attempts
         self.sleep = sleep
-        self.hosts = allowed_hosts(source)
+        self.hosts = allowed_hosts(source) | extra_hosts
         self.requests = 0
         self._last_request: float | None = None
         self._robots: dict[str, RobotFileParser] = {}
@@ -195,7 +196,9 @@ class Fetcher:
         if response.status_code in BLOCK_STATUS:
             raise Blocked(self.source.id, f"HTTP {response.status_code} from {url}")
         if response.status_code >= 400:
-            raise TransportError(self.source.id, f"HTTP {response.status_code} from {url}")
+            raise TransportError(
+                self.source.id, f"HTTP {response.status_code} from {url}", response.status_code
+            )
         return response, url
 
     def _send(self, url: str, headers: dict[str, str], *, robots: bool) -> httpx.Response:

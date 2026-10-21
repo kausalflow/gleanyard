@@ -25,11 +25,13 @@ from gleanyard.mapping import draft_mapping
 from gleanyard.probe import probe as probe_url
 from gleanyard.project import load_project
 from gleanyard.repair import check_repair, plan_repair
+from gleanyard.replay import replay_project
 from gleanyard.run import collect_source, export_project
 from gleanyard.scaffold import scaffold as scaffold_url
 from gleanyard.schema import ProjectSchema
 from gleanyard.skill import skill_state, write_skill
 from gleanyard.status import build_status, load_status, write_status
+from gleanyard.terms import check_terms
 from gleanyard.tryout import try_source
 
 app = typer.Typer(no_args_is_help=True, add_completion=False, help=__doc__)
@@ -191,6 +193,50 @@ def status(root: ProjectDir = Path("."), as_json: JsonFlag = False) -> None:
 
 
 @app.command()
+def terms(
+    root: ProjectDir = Path("."),
+    source: SourceOption = None,
+    force: Annotated[
+        bool, typer.Option("--force", help="Check now, even if checked in the last week.")
+    ] = False,
+    as_json: JsonFlag = False,
+) -> None:
+    """Check each source's terms pages and robots.txt for changes; exit 1 if any changed."""
+    project = _loaded(root)
+    if source:
+        known = {item.id: item for item in project.sources}
+        missing = [name for name in source if name not in known]
+        if missing:
+            raise typer.BadParameter(f"unknown source(s): {', '.join(missing)}")
+        selected = [known[name] for name in source]
+    else:
+        selected = [item for item in project.sources if item.enabled]
+    report = load_status(project) or build_status(project, [])
+    entries = {entry.id: entry for entry in report.sources}
+    results = check_terms(
+        project, selected, {key: entry.terms for key, entry in entries.items()}, force=force
+    )
+    if any(result.checked for result in results):
+        for result in results:
+            if result.source_id in entries:
+                entries[result.source_id].terms = result.state
+        write_status(project, report)
+    changed = [result for result in results if result.state and result.state.changed]
+    if as_json:
+        typer.echo(json.dumps([result.model_dump(mode="json") for result in results], indent=2))
+    else:
+        for result in results:
+            mark = "CHANGED" if result.state and result.state.changed else "ok"
+            typer.echo(f"{mark:8} {result.source_id}: {result.note or 'unchanged'}")
+            for url in result.state.changed if result.state else []:
+                typer.echo(f"  {url}")
+            for url, error in (result.state.errors if result.state else {}).items():
+                typer.echo(f"  could not read {url}: {error}")
+    if changed:
+        raise typer.Exit(1)
+
+
+@app.command()
 def probe(
     url: Annotated[str, typer.Argument(help="Page, feed or document URL.")],
     root: Annotated[Path, typer.Option(help="Project repo, for its user agent.")] = Path("."),
@@ -252,6 +298,44 @@ def try_command(
             typer.echo(f"  sample: {json.dumps(row, ensure_ascii=False)[:200]}")
         for path in report.saved_pages:
             typer.echo(f"  saved: {path}")
+    if not report.passed:
+        raise typer.Exit(1)
+
+
+@app.command("test")
+def test_command(
+    root: ProjectDir = Path("."),
+    source: SourceOption = None,
+    update: Annotated[
+        bool,
+        typer.Option("--update", help="Write the snapshot from today's replay, if it passes."),
+    ] = False,
+    as_json: JsonFlag = False,
+    markdown: Annotated[
+        bool, typer.Option("--markdown", help="Print a PR description instead.")
+    ] = False,
+) -> None:
+    """Replay each source's fixture offline against its snapshot; exit 1 on any difference."""
+    project = _loaded(root)
+    selected = None
+    if source:
+        known = {item.id: item for item in project.sources}
+        missing = [name for name in source if name not in known]
+        if missing:
+            raise typer.BadParameter(f"unknown source(s): {', '.join(missing)}")
+        selected = [known[name] for name in source]
+    report = replay_project(project, selected, update=update)
+    if as_json:
+        typer.echo(json.dumps([item.model_dump() for item in report.results], indent=2))
+    elif markdown:
+        typer.echo(report.markdown())
+    else:
+        for item in report.results:
+            typer.echo(f"{item.verdict.upper():5} {item.source_id}")
+            for reason in item.reasons:
+                typer.echo(f"  {reason}")
+        if not report.results:
+            typer.echo("no sources")
     if not report.passed:
         raise typer.Exit(1)
 
