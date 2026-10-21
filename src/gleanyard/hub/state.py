@@ -34,7 +34,8 @@ class RepoState(BaseModel):
         health = {source.health for source in self.status.sources}
         if "failing" in health:
             return "red"
-        return "amber" if "degraded" in health else "green"
+        terms = any(source.terms and source.terms.changed for source in self.status.sources)
+        return "amber" if "degraded" in health or terms else "green"
 
 
 class HubState(BaseModel):

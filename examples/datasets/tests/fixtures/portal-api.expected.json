@@ -1,0 +1,28 @@
+{
+  "records": {
+    "rec_974c8dc4668e910ff654": {
+      "description": "Hourly readings.",
+      "formats": [
+        "CSV",
+        "JSON"
+      ],
+      "landing_page": "https://data.example/dataset/air",
+      "license": "CC-BY-4.0",
+      "modified": "2026-09-01T10:00:00",
+      "publisher": "Synthetic Environment Agency",
+      "size_bytes": 1048576,
+      "title": "Synthetic air quality"
+    },
+    "rec_ad8a95c705a2809418d7": {
+      "formats": [
+        "CSV"
+      ],
+      "landing_page": "https://data.example/dataset/bikes",
+      "license": "dl-de/by-2-0",
+      "modified": "2026-08-15T08:30:00",
+      "publisher": "Synthetic City",
+      "title": "Synthetic bike counts"
+    }
+  },
+  "today": "2026-10-21"
+}

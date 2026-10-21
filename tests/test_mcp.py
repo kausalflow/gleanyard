@@ -66,6 +66,7 @@ def test_server_lists_read_only_tools_prompts_and_the_skill(root):
         "probe",
         "scaffold",
         "try_source",
+        "test_fixtures",
         "repair_plan",
         "repair_check",
         "json_schema",
@@ -76,6 +77,7 @@ def test_server_lists_read_only_tools_prompts_and_the_skill(root):
         "research",
         "set_up_source",
         "repair",
+        "review_terms",
         "retire_source",
     }
     assert skill.contents[0].text == skill_text()

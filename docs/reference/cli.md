@@ -93,6 +93,33 @@ warning. Exits 1 on `FAIL`. `--markdown` prints the report as a pull request des
 `--save-pages DIR` also writes the fetched pages there (`01.html`, ...), so a repair can read
 the page the source returns today.
 
+## `gleanyard test [PROJECT] [-s ID]... [--update] [--json] [--markdown]`
+
+Replays each source's fixture, `tests/fixtures/<id>.<ext>`, offline: no network and no model.
+It extracts the page with the source's pinned mode and compares the records with the snapshot
+`tests/fixtures/<id>.expected.json`, which also pins the date the page was judged on, so a
+`min: today` bound does not reject an old fixture. A difference names the records that went
+missing, appeared or changed, by their `identity` fields. Sources without a fixture or a
+snapshot, and `llm` sources, are skipped. `--update` writes the snapshot from today's replay,
+only if it passes the same thresholds as `try`. Exits 1 on any difference. The template's
+`validate` workflow runs it on every pull request, and `repair check` runs it for each
+repaired source. See [fixtures and snapshots](../concepts/setting-up-a-source.md#fixtures-and-snapshots).
+
+## `gleanyard terms [PROJECT] [-s ID]... [--force] [--json]`
+
+Fetches the pages listed in each enabled source's newest `evidence/<id>/<date>-terms.yaml`
+(under `pages`, each with a `url`) and the source host's `robots.txt`, and compares a
+fingerprint of their visible text with the one taken at that review. Each source is checked at
+most once every 7 days unless `--force`. Results go to `terms` in `status.json`. A changed page
+stays flagged until a newer evidence file is added, and exits 1 while any source is flagged.
+See [watching the terms](../concepts/rights.md#watching-the-terms).
+
+## `gleanyard badge [PROJECT] [--out DIR] [--json]`
+
+Writes README badges from `status.json`: `badges/project.svg` (for example `1 failing, 3 ok`)
+and `badges/sources/<id>.svg` with each source's health, or `terms changed`. Badges of removed
+sources are deleted. The template's `collect` workflow refreshes and commits them.
+
 ## `gleanyard repair plan [PROJECT] [--json]`
 
 Reads `status.json` and lists the enabled sources an automated repair may attempt: every
@@ -110,7 +137,8 @@ deleted, a source was added, a source's `id`, `schema`, `enabled`, `delivery`, `
 `homepage`, `fetch`, `coverage`, `rights` or `retention` changed, a source was switched to
 `llm`, or the project does not validate. Every changed source, and every source whose mapping
 changed, then runs `try`, and its record count and fill rates are compared with the last good
-run by the same rules that mark a run `degraded`. Exits 0 when ready for review, 1 when it can
+run by the same rules that mark a run `degraded`; its fixture must still replay to its snapshot
+(`gleanyard test`). Exits 0 when ready for review, 1 when it can
 only be a draft, 2 when it cannot be proposed. `--json` adds `files` (what to commit) and the
 Markdown report.
 

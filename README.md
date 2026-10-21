@@ -43,6 +43,9 @@ gleanyard validate [PROJECT] [--json]   # check schema and sources, with file:li
 gleanyard json-schema source            # JSON Schema for editors and AI tools
 gleanyard collect [PROJECT] [-s ID] [--from-cache] [--json]
 gleanyard export [PROJECT] [--json]     # rights-filtered public export
+gleanyard test [PROJECT] [--update]     # replay fixtures offline against their snapshots
+gleanyard terms [PROJECT]               # have a source's terms or robots.txt changed?
+gleanyard badge [PROJECT]               # README badges from status.json
 ```
 
 `collect` fetches each enabled source with the bounded fetcher (same hosts only,

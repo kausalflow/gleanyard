@@ -1,5 +1,7 @@
 # {{project}}
 
+![collection status](badges/project.svg)
+
 A [gleanyard](https://github.com/kausalflow/gleanyard) collection project: recurring sources
 turned into records that follow `schema.yaml`.
 
@@ -12,9 +14,10 @@ candidates/            sources found by research, not set up yet
 evidence/              rights and terms evidence per source
 tests/fixtures/        saved pages that guard a source against regressions
 status.json            health report, written by every scheduled run
+badges/                README badges from status.json (`gleanyard badge`)
 exports/records.jsonl  the rights-filtered public export
 CLAUDE.md              ground rules for an AI assistant
-.claude/skills/        its procedures: research, set up, repair, retire (`gleanyard skill`)
+.claude/skills/        its procedures: research, set up, repair, terms, retire (`gleanyard skill`)
 ```
 
 ```bash
@@ -24,8 +27,13 @@ gleanyard collect
 gleanyard status
 ```
 
-The `collect` workflow runs daily, commits `status.json` and the records, and opens a
-`repair` issue when a source fails or is degraded. Changes to sources arrive as pull requests.
+The `collect` workflow runs daily, commits `status.json`, the badges and the records, and
+opens a `repair` issue when a source fails or is degraded. Once a week per source it also
+reads the terms pages named in `evidence/` and robots.txt, and opens a `terms` issue when
+their text changed. Changes to sources arrive as pull requests; the `validate` workflow checks
+each one with `gleanyard validate` and replays the fixtures with `gleanyard test`.
+
+A source's badge, for a table of sources: `![](badges/sources/<id>.svg)`.
 
 ## Automatic repair (opt-in)
 

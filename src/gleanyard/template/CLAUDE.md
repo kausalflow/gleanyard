@@ -24,9 +24,9 @@ and run no model unless a source pins `llm`. You work here only through pull req
 
 ## Procedures
 
-The procedures for research, setting up, repairing and retiring a source are in the gleanyard
-skill, `.claude/skills/gleanyard/SKILL.md`. It ships with the package: after upgrading
-gleanyard, run `gleanyard skill` to refresh it, and `gleanyard skill --check` to see whether
-it is current. Follow it together with the ground rules above.
+The procedures for research, setting up, repairing, reviewing terms and retiring a source are
+in the gleanyard skill, `.claude/skills/gleanyard/SKILL.md`. It ships with the package: after
+upgrading gleanyard, run `gleanyard skill` to refresh it, and `gleanyard skill --check` to see
+whether it is current. Follow it together with the ground rules above.
 
 @.claude/skills/gleanyard/SKILL.md

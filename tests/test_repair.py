@@ -84,6 +84,20 @@ def test_a_fix_that_still_fails_try_is_only_a_draft(repo):
     assert any("rejected" in problem for problem in result.sources[0].problems)
 
 
+def test_a_fix_must_still_match_the_fixture_snapshot(repo):
+    fix_mapping(repo)
+    fixtures = repo / "tests" / "fixtures"
+    fixtures.mkdir(parents=True)
+    (fixtures / "s.html").write_bytes(CLEAN)
+    stale = {"today": TODAY.isoformat(), "records": {"rec_x": {"title": "Old event"}}}
+    (fixtures / "s.expected.json").write_text(json.dumps(stale))
+    result = check(repo)
+    assert not result.ready
+    assert any(problem.startswith("fixture: ") for problem in result.sources[0].problems)
+    assert runner.invoke(app, ["test", str(repo), "--update"]).exit_code == 0
+    assert check(repo).ready
+
+
 def test_nothing_changed_is_not_proposable(repo):
     result = check(repo)
     assert not result.proposable and result.problems == ["nothing changed"]

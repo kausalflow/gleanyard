@@ -15,7 +15,13 @@ def test_claude_md_imports_the_skill_and_the_skill_holds_the_procedures(tmp_path
     assert "## Ground rules" in claude and "## Procedure:" not in claude
     assert (root / SKILL_PATH).read_text() == skill_text()
     assert skill_text().startswith("---\nname: gleanyard\n")
-    assert set(procedures()) == {"research", "set up a source", "repair", "retire a source"}
+    assert set(procedures()) == {
+        "research",
+        "set up a source",
+        "repair",
+        "review changed terms",
+        "retire a source",
+    }
     assert "gleanyard repair check" in procedures()["repair"]
     assert "Pull request checklist" not in procedures()["retire a source"]
     assert checklist().startswith("## Pull request checklist")

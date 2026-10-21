@@ -26,6 +26,7 @@ from pydantic import BaseModel, Field
 from gleanyard.config import SourceConfig
 from gleanyard.project import Project
 from gleanyard.run import SourceRun
+from gleanyard.terms import TermsState
 
 Health = Literal["ok", "degraded", "failing", "disabled"]
 CheckKind = Literal["record_drop", "fill_rate_drop", "rejection_spike", "unchanged"]
@@ -70,6 +71,9 @@ class SourceStatus(BaseModel):
     error_kind: str | None = None
     error: str | None = None
     note: str | None = None
+    terms: TermsState | None = Field(
+        default=None, description="Fingerprints of the terms pages, from `gleanyard terms`."
+    )
 
 
 class ProjectStatus(BaseModel):
@@ -171,6 +175,7 @@ def _from_run(
         baseline_rejection_rate=rejection_baseline,
         records_digest=old.records_digest if old else None,
         records_changed_at=old.records_changed_at if old else None,
+        terms=old.terms if old else None,
         error_kind=run.error_kind,
         error=run.error,
     )

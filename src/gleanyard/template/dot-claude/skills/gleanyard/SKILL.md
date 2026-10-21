@@ -1,6 +1,6 @@
 ---
 name: gleanyard
-description: Research, set up, repair or retire a source in a gleanyard collection project. Use for any change to sources/, mappings/, candidates/ or evidence/.
+description: Research, set up, repair, review the terms of, or retire a source in a gleanyard collection project. Use for any change to sources/, mappings/, candidates/ or evidence/.
 ---
 
 # Working in a gleanyard project
@@ -21,6 +21,9 @@ gleanyard probe URL                        # feeds, schema.org data, sitemaps, l
 gleanyard scaffold URL --id ID --write     # draft sources/ID.yaml
 gleanyard try ID [--markdown]              # live dry run: PASS or FAIL, writes nothing
 gleanyard try ID --save-pages DIR          # ... and keep today's pages to read
+gleanyard test [-s ID]                     # replay fixtures offline against their snapshots
+gleanyard test -s ID --update              # write the snapshot once the fixture passes
+gleanyard terms [-s ID] [--force]          # have the terms or robots.txt changed?
 gleanyard collect -s ID                    # real run for one source
 gleanyard collect --from-cache -s ID       # re-extract the last cached pages, no network
 gleanyard status                           # health of every source
@@ -31,7 +34,8 @@ gleanyard skill                            # refresh this file after upgrading g
 ```
 
 Every command takes `--json`. A verdict comes from `try` and `validate`, not from your own
-judgement of the output.
+judgement of the output. `test` must pass too: a change that alters what a fixture gives is
+either a bug or, when the change is meant, a reason to refresh the snapshot in the same PR.
 
 ## Procedure: Research
 
@@ -65,7 +69,9 @@ Trigger: a candidate the owner marked ready.
    schema or required fields it left uncovered. Edit by hand until `try` passes; use
    `--force` to redraft an existing mapping. The mapping format is documented at
    https://kausalflow.github.io/gleanyard/.
-4. Save one fixture page to `tests/fixtures/<id>.<ext>` (small, public, no personal data).
+4. Save one fixture page to `tests/fixtures/<id>.<ext>` (small, public, no personal data),
+   then `gleanyard test -s <id> --update` to write `tests/fixtures/<id>.expected.json`.
+   Commit both.
 5. Set `expect_empty: seasonal` only if the source is empty out of season. Set
    `expect_change_days` (for example 7) on sources whose records should change often, such as
    event calendars, so a frozen feed is noticed.
@@ -85,11 +91,28 @@ When the `repair` workflow is turned on, it runs this procedure unattended and o
    `gleanyard collect --from-cache -s <id>` re-extracts it without network.
 3. Fix the smallest thing: selectors for `structure_changed`, a key for a feed, the
    `include` regex for a sitemap. `blocked` or a terms change is not yours to fix: report it.
+   When the page layout changed, replace the fixture with today's page (from `--save-pages`)
+   and refresh its snapshot with `gleanyard test -s <id> --update`.
 4. If the pinned mode cannot be fixed, re-run the setup procedure's mode order and propose the
    switch in the PR, with evidence for why.
 5. A repair PR passes only when `gleanyard repair check` prints `ready`: `try` passes, record
-   counts and fill rates match the last good run, `validate` is clean, and nothing outside
-   sources, mappings, fixtures and evidence changed. Put its `--markdown` output in the PR.
+   counts and fill rates match the last good run, the fixture replays to its snapshot,
+   `validate` is clean, and nothing outside sources, mappings, fixtures and evidence changed.
+   Put its `--markdown` output in the PR.
+
+## Procedure: Review changed terms
+
+Trigger: a `terms` issue, or `gleanyard terms` prints `CHANGED` for a source.
+
+1. `gleanyard status --json` lists the changed pages under the source's `terms.changed`. Read
+   each page and the last `evidence/<id>/<date>-terms.yaml`.
+2. Write a new `evidence/<id>/<today>-terms.yaml` with the same shape: every page you read,
+   the relevant quote as it stands now, and your reading of what changed.
+3. If the new terms allow less than the source's `rights` say, propose the narrower `rights`
+   (or `enabled: false`) in the same PR and say why; the owner decides. If nothing that
+   matters changed, say so.
+4. Open the PR. The next `gleanyard terms` run takes the new evidence file as the baseline
+   and clears the warning.
 
 ## Procedure: Retire a source
 
@@ -99,6 +122,7 @@ source file and in `evidence/`, and open a PR. Do not delete its stored records.
 ## Pull request checklist
 
 - [ ] `gleanyard validate` clean
+- [ ] `gleanyard test` passes, with a snapshot for every fixture you added or changed
 - [ ] `gleanyard try <id>` PASS, output in the description
 - [ ] evidence file for the terms you read
 - [ ] `rights` left for the owner to decide; `enabled` unchanged

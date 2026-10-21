@@ -21,17 +21,22 @@ jobs:
           path: data/raw
           key: raw-${{ github.run_id }}
           restore-keys: raw-
-      - run: pip install "gleanyard~=0.5.0"
+      - run: pip install "gleanyard~=0.6.0"
       - run: gleanyard validate
       - id: collect
         run: gleanyard collect
         continue-on-error: true
       - run: gleanyard export
+      - id: terms
+        name: Have the terms or robots.txt changed? (each source at most once a week)
+        run: gleanyard terms
+        continue-on-error: true
+      - run: gleanyard badge
       - name: Commit results
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add status.json data/records data/review exports $(ls -d dataherb.json _dataherb 2>/dev/null)
+          git add status.json badges data/records data/review exports $(ls -d dataherb.json _dataherb 2>/dev/null)
           git diff --cached --quiet || git commit -m "Collect $(date -u +%F)"
           git push
       - id: health
@@ -50,6 +55,17 @@ jobs:
             gh issue comment "$existing" --body "$body"
           else
             gh issue create --label repair --title "Repair needed" --body "$body"
+          fi
+      - name: Ask the owner to read changed terms
+        if: steps.terms.outcome == 'failure'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh label create terms --color 5319E7 --force
+          body=$(jq -r '"The terms or robots.txt of these sources changed since their review (see the procedure \"Review changed terms\"):\n" + ([.sources[] | select(.terms.changed // [] | length > 0) | "- `\(.id)`: \(.terms.changed | join(", "))"] | join("\n"))' status.json)
+          existing=$(gh issue list --label terms --state open --json number --jq '.[0].number // empty')
+          if [ -z "$existing" ]; then
+            gh issue create --label terms --title "Terms changed" --body "$body"
           fi
       - name: Fail the run so it shows red
         if: steps.collect.outcome == 'failure' || steps.health.outcome == 'failure'

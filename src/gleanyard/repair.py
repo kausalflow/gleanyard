@@ -10,7 +10,9 @@ they can become a pull request:
 - a source keeps its id, url, delivery, rights, fetch limits and ``enabled`` flag, and is not
   switched to ``llm`` mode;
 - every changed source must pass ``try``, and its record count and fill rates must not fall
-  below the last good run by the same rules that mark a run ``degraded``.
+  below the last good run by the same rules that mark a run ``degraded``;
+- its fixture must still replay to its snapshot (``gleanyard test``), so a repair that fits a
+  new page layout refreshes the fixture and the snapshot with it.
 """
 
 from __future__ import annotations
@@ -26,6 +28,7 @@ from pydantic import BaseModel, Field
 
 from gleanyard.config import SelectorsExtract
 from gleanyard.project import Project, load_project
+from gleanyard.replay import replay_source
 from gleanyard.status import (
     DROP_RATIO,
     FILL_DROP_RATIO,
@@ -239,6 +242,9 @@ def check_repair(
         report = try_source(project, source, client=client, today=today)
         problems = [] if report.passed else [f"try: {reason}" for reason in report.reasons]
         problems += compare_with_baseline(report, before.get(source.id))
+        replay = replay_source(project, source)
+        if replay.verdict == "fail":
+            problems += [f"fixture: {reason}" for reason in replay.reasons]
         result.sources.append(
             SourceCheck(id=source.id, passed=not problems, problems=problems, report=report)
         )

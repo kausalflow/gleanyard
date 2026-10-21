@@ -13,8 +13,10 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - run: pip install "gleanyard~=0.5.0"
+      - run: pip install "gleanyard~=0.6.0"
       - run: gleanyard validate
+      - name: Do the fixtures still give the same records?
+        run: gleanyard test
       - name: Are the assistant's procedures current?
         run: |
           gleanyard skill --check || echo "::warning::The gleanyard skill is out of date: run 'gleanyard skill' and commit the result."

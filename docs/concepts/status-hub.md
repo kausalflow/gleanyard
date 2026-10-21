@@ -74,8 +74,11 @@ anyone to see the source names, record counts and error messages.
 
 The dashboard is one static page (no JavaScript): a row per project with a red, amber or
 green marker, opening to its sources, their last success and error or warning, and the
-setup or repair pull requests waiting for review. A project that needs attention starts
-open. The page follows the reader's light or dark setting and works on a phone.
+setup or repair pull requests waiting for review. Under each source a folded table shows how
+often each field is filled now and in the baseline run; a field below 80% of its baseline is
+marked amber and the table starts open, before the 50% `fill_rate_drop` warning fires. A
+project that needs attention starts open. The page follows the reader's light or dark
+setting and works on a phone.
 
 ## Alerts fire on change
 
@@ -91,6 +94,7 @@ seven.
 | Fields stopped filling | A source has a `fill_rate_drop` warning, such as dates that stopped parsing. |
 | More records rejected | A source has a `rejection_spike` warning. |
 | Data stopped changing | A source has an `unchanged` warning (only with `expect_change_days`). |
+| Terms changed | A source's terms pages or robots.txt changed since its last review ([watching the terms](rights.md#watching-the-terms)). |
 | Missed run | The report's `generated_at` is older than `missed_run_hours`. |
 | PR waiting | A `setup` or `repair` pull request has been open longer than `pr_waiting_days`. |
 | No report | `status.json` is missing or invalid, or the repo cannot be read. |
