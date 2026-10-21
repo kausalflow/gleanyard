@@ -13,7 +13,8 @@ evidence/              rights and terms evidence per source
 tests/fixtures/        saved pages that guard a source against regressions
 status.json            health report, written by every scheduled run
 exports/records.jsonl  the rights-filtered public export
-CLAUDE.md              how an AI assistant researches, sets up and repairs sources
+CLAUDE.md              ground rules for an AI assistant
+.claude/skills/        its procedures: research, set up, repair, retire (`gleanyard skill`)
 ```
 
 ```bash
@@ -29,7 +30,7 @@ The `collect` workflow runs daily, commits `status.json` and the records, and op
 ## Automatic repair (opt-in)
 
 The `repair` workflow runs after a `collect` run that failed. A coding agent (Claude Code)
-follows the Repair procedure in `CLAUDE.md` and edits the broken source; then
+follows the Repair procedure in the gleanyard skill and edits the broken source; then
 `gleanyard repair check`, which runs no model, decides whether the edit becomes a pull request.
 It must pass `try`, match the last good run, and leave each source's url, rights, limits and
 `enabled` alone. A fix that does not fully pass opens as a draft; a source that is `blocked`
@@ -45,6 +46,18 @@ It does nothing until you turn it on:
 4. Optional: set the repository variable `GLEANYARD_REPAIR_MODEL` to choose the model.
 
 Each run costs model usage. Only one repair pull request is open at a time.
+
+## Working with an AI assistant
+
+`CLAUDE.md` holds this repo's ground rules and imports the gleanyard skill
+(`.claude/skills/gleanyard/SKILL.md`) with the procedures. The skill ships with the package:
+after upgrading gleanyard, run `gleanyard skill` and commit the result. Assistants that speak
+MCP can also use the project's commands as tools:
+
+```bash
+pip install 'gleanyard[mcp]'
+claude mcp add gleanyard -- gleanyard mcp     # or any MCP client: command `gleanyard mcp`
+```
 
 To watch this project together with others, add the topic `gleanyard` to the repo on GitHub:
 a [status hub](https://kausalflow.github.io/gleanyard/concepts/status-hub/) set up with

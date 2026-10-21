@@ -1229,7 +1229,7 @@ wheels = [
 
 [[package]]
 name = "gleanyard"
-version = "0.4.0"
+version = "0.5.0"
 source = { editable = "." }
 dependencies = [
     { name = "cssselect" },
@@ -1249,12 +1249,16 @@ llm = [
 map = [
     { name = "crawl4ai" },
 ]
+mcp = [
+    { name = "mcp" },
+]
 pdf = [
     { name = "pypdf" },
 ]
 
 [package.dev-dependencies]
 dev = [
+    { name = "mcp" },
     { name = "pydantic-ai-slim" },
     { name = "pypdf" },
     { name = "pytest" },
@@ -1271,6 +1275,7 @@ requires-dist = [
     { name = "httpx", specifier = ">=0.27,<1" },
     { name = "icalendar", specifier = ">=6,<8" },
     { name = "lxml", specifier = ">=5,<7" },
+    { name = "mcp", marker = "extra == 'mcp'", specifier = ">=2,<3" },
     { name = "pydantic", specifier = ">=2.7,<3" },
     { name = "pydantic-ai", marker = "extra == 'llm'", specifier = ">=1" },
     { name = "pypdf", marker = "extra == 'pdf'", specifier = ">=5" },
@@ -1278,10 +1283,11 @@ requires-dist = [
     { name = "recurring-ical-events", specifier = ">=3.3,<4" },
     { name = "typer", specifier = ">=0.12,<1" },
 ]
-provides-extras = ["llm", "pdf", "map"]
+provides-extras = ["llm", "pdf", "map", "mcp"]
 
 [package.metadata.requires-dev]
 dev = [
+    { name = "mcp", specifier = ">=2,<3" },
     { name = "pydantic-ai-slim", specifier = ">=1" },
     { name = "pypdf", specifier = ">=5" },
     { name = "pytest", specifier = ">=8" },

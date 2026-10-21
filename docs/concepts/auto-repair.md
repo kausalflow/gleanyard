@@ -15,7 +15,8 @@ so the agent can draft a fix but cannot decide that it is one.
    `failing` ones with `structure_changed`, `empty`, `pagination_changed` or
    `filter_ignored`. A `blocked` source, a rights problem, a network error or a reached limit is
    left to you; the `repair` issue already lists it.
-3. The agent follows the Repair procedure in `CLAUDE.md` for those sources. It has a read-only
+3. The agent follows the ground rules in `CLAUDE.md` and the Repair procedure in the
+   [gleanyard skill](agents.md) for those sources. It has a read-only
    GitHub token and only these tools: reading and editing files, and the `gleanyard` commands
    `try`, `validate`, `status`, `collect --from-cache`, `json-schema` and `repair`. It reads
    today's page with `gleanyard try ID --save-pages DIR` and the last good one from the raw
