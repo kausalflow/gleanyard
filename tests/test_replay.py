@@ -17,8 +17,19 @@ TODAY = date(2026, 10, 21)
 
 def project_with_fixtures(tmp_path: Path):
     root = build_project(tmp_path)
-    shutil.copytree(EXAMPLE / "tests" / "fixtures", root / "tests" / "fixtures", dirs_exist_ok=True)
+    shutil.copytree(
+        EXAMPLE / "tests" / "fixtures",
+        root / "tests" / "fixtures",
+        ignore=shutil.ignore_patterns("*.expected.json"),
+        dirs_exist_ok=True,
+    )
     return root
+
+
+def test_the_example_snapshots_are_current():
+    project = load_project(EXAMPLE)
+    report = replay_project(project)
+    assert [item.verdict for item in report.results] == ["pass"] * 3, report.markdown()
 
 
 def test_without_a_snapshot_the_source_is_skipped(tmp_path):

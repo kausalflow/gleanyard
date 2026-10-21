@@ -56,6 +56,34 @@ Within an exported record, a field is included only if it is listed in `public_f
 its class is allowed. Each row carries its source, retrieval time, extraction mode and
 licence or attribution in `_source`.
 
+## Watching the terms
+
+The rights of a source rest on the pages someone read at setup. Each review is saved as
+`evidence/<id>/<date>-terms.yaml`:
+
+```yaml
+source: city-events
+read_at: 2026-10-10
+pages:
+  - url: https://city.example/impressum
+    quote: Die Inhalte dieser Website sind urheberrechtlich geschuetzt.
+reading: Facts only; no descriptions or images in the export.
+suggested_tier: facts_only
+```
+
+`gleanyard terms` fetches each page listed under `pages`, plus the source host's
+`robots.txt`, and keeps a fingerprint of the visible text in `status.json` under the source's
+`terms`. Markup, scripts, navigation and spacing do not count; the wording does. The
+template's `collect` workflow runs it every day, and it checks each source at most once a week.
+
+When a page's text differs from the review, the source is flagged: `gleanyard terms` exits 1,
+the `collect` workflow opens a `terms` issue, the source's badge reads `terms changed` and the
+status hub raises a `terms_changed` alert. The flag stays, even if the page changes back,
+until someone reads the pages again and adds a newer evidence file; that review becomes the
+new baseline. A terms change never marks a source `degraded` and never starts an automatic
+repair: what the new terms allow is the owner's decision. A `robots.txt` that appears where
+there was none counts as a change; a page that cannot be read is reported, not flagged.
+
 !!! warning "Rights notes are not legal advice"
     The checks make your decisions enforceable; they cannot make the decisions for you.
     Read a site's terms before you enable a source.

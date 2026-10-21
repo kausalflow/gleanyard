@@ -56,6 +56,10 @@ access, in a repo of its own.
 - AI assistants (0.5.0): the procedures moved from `CLAUDE.md` into a gleanyard skill that
   ships with the package (`gleanyard skill`), and `gleanyard mcp` serves the project's
   commands as read-only tools to any MCP client.
+- Checks between runs (0.6.0): `gleanyard test` replays fixtures offline against snapshots on
+  every pull request, `gleanyard terms` notices when a source's terms or robots.txt change,
+  `gleanyard badge` draws README badges, and the hub shows field fill rates against the
+  baseline.
 
 ## Decisions so far
 

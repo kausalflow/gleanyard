@@ -17,7 +17,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - run: pip install "gleanyard~=0.5.0"
+      - run: pip install "gleanyard~=0.6.0"
       - name: Check the setup
         env:
           GH_TOKEN: ${{ secrets.HUB_TOKEN || github.token }}

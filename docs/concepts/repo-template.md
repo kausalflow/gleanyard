@@ -16,8 +16,8 @@ cd my-events && git init && gleanyard validate
 | `sources/`, `mappings/`, `candidates/`, `evidence/`, `tests/fixtures/` | Where the assistant's pull requests put their work. |
 | `CLAUDE.md` | Ground rules for an AI assistant; imports the gleanyard skill. |
 | `.claude/skills/gleanyard/SKILL.md` | The procedures: research, set up, repair, retire. Versioned with the package; see [AI assistants](agents.md). |
-| `.github/workflows/collect.yml` | Daily collect and export; commits `status.json` and the records. |
-| `.github/workflows/validate.yml` | Runs `gleanyard validate` on every pull request. |
+| `.github/workflows/collect.yml` | Daily collect and export; commits `status.json`, the badges and the records; checks the terms weekly. |
+| `.github/workflows/validate.yml` | Runs `gleanyard validate` and `gleanyard test` on every pull request. |
 | `.github/workflows/repair.yml` | Opt-in: drafts a fix for a broken source as a pull request ([automatic repair](auto-repair.md)). |
 | `NOTICE` | Credits crawl4ai, which the setup procedure may use. |
 

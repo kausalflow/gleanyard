@@ -147,14 +147,14 @@ def replay_source(
             encoding="utf-8",
         )
         result.verdict, result.updated = "pass", True
-        result.reasons.append(f"wrote {path.relative_to(project.root)} ({len(records)} records)")
+        result.reasons.append(f"wrote {path.relative_to(project.root)} ({len(records)} record(s))")
         return result
     differences = compare(snapshot.records, records, project.schema.identity)
     if differences:
         result.reasons += differences
         return result
     result.verdict = "pass"
-    result.reasons.append(f"{len(records)} records match the snapshot of {snapshot.today}")
+    result.reasons.append(f"{len(records)} record(s) match the snapshot of {snapshot.today}")
     return result
 
 

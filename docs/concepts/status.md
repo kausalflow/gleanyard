@@ -67,6 +67,11 @@ calendar: a feed that returns the same records for weeks is usually frozen, not 
 }
 ```
 
+`terms`, written by `gleanyard terms`, holds the fingerprints of the source's terms pages and
+`robots.txt` as of its last review, and lists under `changed` the pages whose text differs
+since ([watching the terms](rights.md#watching-the-terms)). `gleanyard badge` draws README
+badges from this file.
+
 `records` is the last good count while a source is failing. Each warning has a `kind`, a
 readable `message` and, for `fill_rate_drop`, the `field`. `field_fill_rates` shows the share
 of records that carry each field, so a selector that silently stops matching shows as a rate
