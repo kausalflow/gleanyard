@@ -489,3 +489,37 @@ def test_summary_lists_problems_for_the_job_summary():
     assert "🔴 **o/a**: 2 sources, 20 records, 1 need attention" in text
     assert "`down` failing: <script>x</script>" in text
     assert "waiting: [#4 Repair <b>x</b>](https://github.com/o/a/pull/4)" in text
+
+
+def test_changed_terms_raise_an_alert_and_turn_the_repo_amber():
+    from gleanyard.terms import TermsState
+
+    terms = TermsState(
+        reviewed_on="2026-10-01",
+        changed=["https://x.example/impressum"],
+        changed_at=NOW - timedelta(days=1),
+    )
+    github = FakeGitHub(files={"o/a": status(source("x", terms=terms)), "o/b": status(source("y"))})
+    state = collect_state(config(), github, NOW)
+    assert state.repos[0].level == "amber"
+    alerts = {a.key: a for a in compute_alerts(state, config())}
+    alert = alerts["o/a:x:terms_changed"]
+    assert alert.kind == "terms_changed"
+    assert "https://x.example/impressum" in alert.body and "2026-10-01" in alert.body
+
+
+def test_dashboard_folds_field_fill_rates_and_marks_drift():
+    from gleanyard.hub.dashboard import drifting_fields, render_dashboard, render_summary
+
+    drifting = source(
+        "x",
+        field_fill_rates={"title": 1.0, "venue": 0.6},
+        baseline_fill_rates={"title": 1.0, "venue": 0.9},
+    )
+    assert drifting_fields(drifting) == ["venue"]
+    state = collect_state(
+        config(), FakeGitHub(files={"o/a": status(drifting), "o/b": status(source("y"))}), NOW
+    )
+    page = render_dashboard(state)
+    assert "Fields (1 filling less than before)" in page and "bar drift" in page
+    assert "fields filling less: venue" in render_summary(state)

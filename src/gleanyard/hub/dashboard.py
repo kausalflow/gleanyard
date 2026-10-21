@@ -12,6 +12,7 @@ from datetime import datetime
 from html import escape
 
 from gleanyard.hub.state import HubState, RepoState
+from gleanyard.status import FILL_MIN_BASELINE, SourceStatus
 
 CSS = """
 :root{--bg:#fff;--fg:#1c1f24;--muted:#5d6672;--line:#d9dee5;--card:#f6f8fa;
@@ -37,8 +38,14 @@ vertical-align:top;overflow-wrap:anywhere}th{color:var(--muted);font-weight:500}
 .tag.ok,.tag.disabled{color:var(--muted)}.tag.degraded{color:var(--amber)}
 .tag.failing{color:var(--red)}
 .problem{color:var(--red)}
+.fields td{border-top:none;padding-top:0}.fields details{background:none;border:none;
+margin:0;padding:0}.fields summary{padding:.2rem 0;font-size:.8125rem;color:var(--muted)}
+.fields table{margin:0 0 .5rem}.bar{display:inline-block;height:.5rem;border-radius:2px;
+background:var(--green);vertical-align:middle;margin-right:.4rem}.bar.drift{background:var(--amber)}
 @media (max-width:36rem){.hide-sm{display:none}}
 """
+
+DRIFT_RATIO = 0.8  # a field filling under 80% of its baseline is marked, before it alerts at 50%
 
 
 def render_dashboard(state: HubState, title: str = "Collection status") -> str:
@@ -83,12 +90,15 @@ def _repo(repo: RepoState, now: datetime) -> str:
             detail = escape(source.error or source.note or "")
             if source.error_kind and source.error:
                 detail = f"<code>{escape(source.error_kind)}</code> {detail}"
+            if source.terms is not None and source.terms.changed:
+                detail += " <span class='tag degraded'>terms changed</span>"
             body += (
                 f"<tr><td>{escape(source.id)}</td>"
                 f"<td><span class='tag {escape(source.health)}'>{escape(source.health)}</span></td>"
                 f"<td class=num>{source.records}</td>"
                 f"<td class='hide-sm'>{_stamp(source.last_success_at)}</td><td>{detail}</td></tr>"
             )
+            body += _fields(source)
         body += "</table>"
     if repo.pulls:
         body += "<table><tr><th>Waiting pull request</th><th>Open since</th></tr>"
@@ -114,6 +124,41 @@ def _repo(repo: RepoState, now: datetime) -> str:
     )
 
 
+def drifting_fields(source: SourceStatus) -> list[str]:
+    """Fields filling clearly less than in the baseline run, though not yet a warning."""
+    baseline = source.baseline_fill_rates
+    return [
+        name
+        for name, before in sorted(baseline.items())
+        if before >= FILL_MIN_BASELINE
+        and source.field_fill_rates.get(name, 0.0) < before * DRIFT_RATIO
+    ]
+
+
+def _fields(source: SourceStatus) -> str:
+    """How often each field is filled now and in the baseline run, as a folded table."""
+    names = sorted(set(source.field_fill_rates) | set(source.baseline_fill_rates))
+    if not names:
+        return ""
+    drifting = set(drifting_fields(source))
+    rows = ""
+    for name in names:
+        now = source.field_fill_rates.get(name, 0.0)
+        before = source.baseline_fill_rates.get(name)
+        kind = "bar drift" if name in drifting else "bar"
+        bar = f"<span class='{kind}' style='width:{now * 4:.2f}rem'></span>"
+        rows += (
+            f"<tr><td>{escape(name)}</td><td>{bar}{now:.0%}</td>"
+            f"<td class=num>{'' if before is None else f'{before:.0%}'}</td></tr>"
+        )
+    label = f"Fields ({len(drifting)} filling less than before)" if drifting else "Fields"
+    return (
+        f"<tr class=fields><td colspan=5><details{' open' if drifting else ''}>"
+        f"<summary>{label}</summary><table><tr><th>Field</th><th>Filled now</th>"
+        f"<th class=num>Baseline</th></tr>{rows}</table></details></td></tr>"
+    )
+
+
 MARKERS = {"green": "🟢", "amber": "🟠", "red": "🔴"}
 
 
@@ -135,6 +180,12 @@ def render_summary(state: HubState, title: str = "Collection status") -> str:
         for source in broken:
             detail = source.error or source.note or ""
             lines.append(f"  - `{source.id}` {source.health}: {detail}")
+        for source in sources:
+            if source.terms is not None and source.terms.changed:
+                lines.append(f"  - `{source.id}` terms changed: {', '.join(source.terms.changed)}")
+            drifting = drifting_fields(source) if source.health == "ok" else []
+            if drifting:
+                lines.append(f"  - `{source.id}` fields filling less: {', '.join(drifting)}")
         for pull in repo.pulls:
             lines.append(f"  - waiting: [#{pull.number} {pull.title}]({pull.url})")
     return "\n".join(lines) + "\n"
