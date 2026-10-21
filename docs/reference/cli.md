@@ -128,6 +128,21 @@ Needs the optional extra `pip install 'gleanyard[map]'`, the source's `send_to_m
 takes a provider/model id such as `anthropic/<model>`. An existing mapping is replaced only with
 `--force`; `--dry-run` writes nothing. Exits 1 when the draft is unusable or finds no records.
 
+## `gleanyard skill [PROJECT] [--check] [--json]`
+
+Writes the assistant's procedures for the installed version to
+`.claude/skills/gleanyard/SKILL.md`, if that file is missing or differs. `--check` only reports
+`current`, `outdated` or `missing`, and exits 1 unless it is current. See
+[AI assistants](../concepts/agents.md).
+
+## `gleanyard mcp [PROJECT]`
+
+Runs an MCP server over stdio for the project, with read-only tools that return the same JSON
+as `--json`: `validate`, `status`, `check_url`, `probe`, `scaffold` (returns the draft, writes
+nothing), `try_source`, `repair_plan`, `repair_check`, `json_schema` and `search_records`
+(the public export only). The procedures are served as prompts and the skill as the resource
+`gleanyard://skill`. Needs the optional extra `pip install 'gleanyard[mcp]'`.
+
 ## `gleanyard export [PROJECT] [--json]`
 
 Writes the rights-filtered public export, by default `exports/records.jsonl` (set `export`

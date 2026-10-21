@@ -7,7 +7,6 @@ import os
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Annotated
-from urllib.parse import urlsplit
 
 import typer
 
@@ -29,6 +28,7 @@ from gleanyard.repair import check_repair, plan_repair
 from gleanyard.run import collect_source, export_project
 from gleanyard.scaffold import scaffold as scaffold_url
 from gleanyard.schema import ProjectSchema
+from gleanyard.skill import skill_state, write_skill
 from gleanyard.status import build_status, load_status, write_status
 from gleanyard.tryout import try_source
 
@@ -311,24 +311,13 @@ def check(
     as_json: JsonFlag = False,
 ) -> None:
     """Say whether a URL's host is already a source, a candidate or excluded (exit 1 if so)."""
-    project = load_project(root)
-    host = (urlsplit(url).hostname or "").lower()
-    if not host:
-        raise typer.BadParameter("not a URL")
-    sources = [
-        item.id
-        for item in project.sources
-        if host in {urlsplit(str(u)).hostname for u in (item.url, item.homepage) if u}
-    ]
-    candidate = (root / "candidates" / f"{host}.yaml").is_file()
-    excluded = host in {name.lower() for name in project.config.excluded_hosts}
-    status = (
-        "excluded" if excluded else "source" if sources else "candidate" if candidate else "new"
-    )
+    try:
+        result = load_project(root).host_status(url)
+    except ValueError as error:
+        raise typer.BadParameter(str(error)) from error
+    host, status, sources = result["host"], result["status"], result["sources"]
     if as_json:
-        typer.echo(
-            json.dumps({"host": host, "status": status, "sources": sources, "candidate": candidate})
-        )
+        typer.echo(json.dumps(result))
     else:
         typer.echo(f"{host}: {status}" + (f" ({', '.join(sources)})" if sources else ""))
     if status != "new":
@@ -393,6 +382,40 @@ def init(
     typer.echo(f"created {project!r} in {directory} ({len(written)} files)")
     typer.echo("next: edit schema.yaml and research.md, then `gleanyard validate`")
     typer.echo("on GitHub, add the topic `gleanyard` to the repo so a status hub finds it")
+
+
+@app.command()
+def skill(
+    root: ProjectDir = Path("."),
+    check_only: Annotated[
+        bool, typer.Option("--check", help="Only report; exit 1 if missing or outdated.")
+    ] = False,
+    as_json: JsonFlag = False,
+) -> None:
+    """Write the assistant's procedures (.claude/skills/gleanyard/SKILL.md) for this version."""
+    before = skill_state(root)
+    if not check_only and before.state != "current":
+        write_skill(root)
+    result = {**before.model_dump(), "written": not check_only and before.state != "current"}
+    if as_json:
+        typer.echo(json.dumps(result))
+    elif result["written"]:
+        typer.echo(f"wrote {before.path} (was {before.state}) for gleanyard {__version__}")
+    else:
+        typer.echo(f"{before.path}: {before.state} for gleanyard {__version__}")
+    if check_only and before.state != "current":
+        raise typer.Exit(1)
+
+
+@app.command("mcp")
+def mcp_command(root: ProjectDir = Path(".")) -> None:
+    """Serve the project's commands as MCP tools over stdio (needs gleanyard[mcp])."""
+    try:
+        from gleanyard.mcp_server import build_server
+    except ImportError as error:
+        typer.echo("the MCP server needs the extra: pip install 'gleanyard[mcp]'", err=True)
+        raise typer.Exit(2) from error
+    build_server(root).run("stdio")
 
 
 def _hub_clients() -> tuple[HttpGitHub | None, HttpGitHub | None]:

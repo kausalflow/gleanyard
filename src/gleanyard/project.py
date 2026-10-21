@@ -10,6 +10,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, TypeVar
+from urllib.parse import urlsplit
 
 import yaml
 from pydantic import BaseModel, ValidationError
@@ -49,6 +50,23 @@ class Project:
     @property
     def ok(self) -> bool:
         return not self.issues
+
+    def host_status(self, url: str) -> dict[str, Any]:
+        """Whether a URL's host is already a source, a candidate, excluded, or new."""
+        host = (urlsplit(url).hostname or "").lower()
+        if not host:
+            raise ValueError("not a URL")
+        sources = [
+            item.id
+            for item in self.sources
+            if host in {urlsplit(str(u)).hostname for u in (item.url, item.homepage) if u}
+        ]
+        candidate = (self.root / "candidates" / f"{host}.yaml").is_file()
+        excluded = host in {name.lower() for name in self.config.excluded_hosts}
+        status = (
+            "excluded" if excluded else "source" if sources else "candidate" if candidate else "new"
+        )
+        return {"host": host, "status": status, "sources": sources, "candidate": candidate}
 
 
 def load_project(root: Path) -> Project:

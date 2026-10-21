@@ -29,6 +29,7 @@ def test_init_creates_a_valid_project(tmp_path):
         ".github/workflows/collect.yml",
         ".github/workflows/validate.yml",
         ".github/workflows/repair.yml",
+        ".claude/skills/gleanyard/SKILL.md",
         "sources/.gitkeep",
         "mappings/.gitkeep",
         "candidates/.gitkeep",
@@ -53,6 +54,8 @@ def test_workflows_are_valid_yaml_with_the_expected_jobs(tmp_path):
     assert "gleanyard collect" in steps and "gleanyard export" in steps
     validate = yaml.safe_load((root / ".github/workflows/validate.yml").read_text())
     assert "pull_request" in validate[True]
+    steps = [step.get("run", "") for step in validate["jobs"]["validate"]["steps"]]
+    assert any("gleanyard skill --check" in step for step in steps)
 
 
 def test_init_refuses_a_non_empty_directory_and_bad_names(tmp_path):
@@ -85,6 +88,7 @@ def test_template_ships_in_the_built_wheel(tmp_path):
         "dot-github/workflows/collect.yml",
         "dot-github/workflows/repair.yml",
         "dot-gitignore",
+        "dot-claude/skills/gleanyard/SKILL.md",
         "CLAUDE.md",
     ):
         assert any(name.endswith(f"template/{expected}") for name in names), expected

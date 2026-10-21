@@ -53,6 +53,9 @@ access, in a repo of its own.
 - Automatic repair (0.4.0): the template's opt-in `repair` workflow lets a coding agent draft
   a fix for a broken source, and `gleanyard repair check` decides without a model whether it
   becomes a pull request.
+- AI assistants (0.5.0): the procedures moved from `CLAUDE.md` into a gleanyard skill that
+  ships with the package (`gleanyard skill`), and `gleanyard mcp` serves the project's
+  commands as read-only tools to any MCP client.
 
 ## Decisions so far
 

@@ -21,7 +21,7 @@ jobs:
           path: data/raw
           key: raw-${{ github.run_id }}
           restore-keys: raw-
-      - run: pip install "gleanyard~=0.4.0"
+      - run: pip install "gleanyard~=0.5.0"
       - run: gleanyard validate
       - id: collect
         run: gleanyard collect
