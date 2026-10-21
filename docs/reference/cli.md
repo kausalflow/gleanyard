@@ -83,13 +83,36 @@ are mapped to the feed's keys by field name and schema `aliases` (`DTSTART` to `
 required fields it cannot find are listed as notes. Drafts are `enabled: false` with rights
 pending. `--write` saves the file and refuses to overwrite one.
 
-## `gleanyard try SOURCE [PROJECT] [--json] [--markdown]`
+## `gleanyard try SOURCE [PROJECT] [--json] [--markdown] [--save-pages DIR]`
 
-A live dry run that writes nothing: fetches the source, extracts with its pinned mode, and
+A live dry run that stores nothing: fetches the source, extracts with its pinned mode, and
 prints sample records, how often each field is filled, why records were rejected and a
 `PASS` or `FAIL`. It fails when there are no records (unless `expect_empty: seasonal`), when
 over 20% of candidates were rejected, or when over half of the records lost a field to a
 warning. Exits 1 on `FAIL`. `--markdown` prints the report as a pull request description.
+`--save-pages DIR` also writes the fetched pages there (`01.html`, ...), so a repair can read
+the page the source returns today.
+
+## `gleanyard repair plan [PROJECT] [--json]`
+
+Reads `status.json` and lists the enabled sources an automated repair may attempt: every
+`degraded` source, and `failing` ones whose `error_kind` an edit can fix (`structure_changed`,
+`empty`, `pagination_changed`, `filter_ignored`). The rest are listed as skipped with the
+reason, for example `blocked` (the owner reviews the terms) or `transport` (it usually clears
+on the next run). See [automatic repair](../concepts/auto-repair.md).
+
+## `gleanyard repair check [PROJECT] [--base REF] [--json] [--markdown]`
+
+Judges the uncommitted changes against `REF` (default `HEAD`) as a repair, without a model.
+Generated files (records, exports, `status.json`) are left out. It is not proposable when a
+file outside `sources/`, `mappings/`, `tests/fixtures/` and `evidence/` changed, a file was
+deleted, a source was added, a source's `id`, `schema`, `enabled`, `delivery`, `url`,
+`homepage`, `fetch`, `coverage`, `rights` or `retention` changed, a source was switched to
+`llm`, or the project does not validate. Every changed source, and every source whose mapping
+changed, then runs `try`, and its record count and fill rates are compared with the last good
+run by the same rules that mark a run `degraded`. Exits 0 when ready for review, 1 when it can
+only be a draft, 2 when it cannot be proposed. `--json` adds `files` (what to commit) and the
+Markdown report.
 
 ## `gleanyard map SOURCE [PROJECT] [--model ID] [--force] [--dry-run] [--json]`
 

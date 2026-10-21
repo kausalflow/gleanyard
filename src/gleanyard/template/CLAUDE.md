@@ -30,9 +30,12 @@ gleanyard check URL                        # new, candidate, source or excluded?
 gleanyard probe URL                        # feeds, schema.org data, sitemaps, legal pages
 gleanyard scaffold URL --id ID --write     # draft sources/ID.yaml
 gleanyard try ID [--markdown]              # live dry run: PASS or FAIL, writes nothing
+gleanyard try ID --save-pages DIR          # ... and keep today's pages to read
 gleanyard collect -s ID                    # real run for one source
 gleanyard collect --from-cache -s ID       # re-extract the last cached pages, no network
 gleanyard status                           # health of every source
+gleanyard repair plan                      # which broken sources a repair may attempt
+gleanyard repair check                     # may the uncommitted edit become a repair PR?
 gleanyard json-schema source               # exact shape of a source file
 ```
 
@@ -82,6 +85,7 @@ Trigger: a candidate the owner marked ready.
 ## Procedure: Repair
 
 Trigger: a `repair` issue, or `gleanyard status` shows a `failing` or `degraded` source.
+When the `repair` workflow is turned on, it runs this procedure unattended and opens the PR.
 
 1. `gleanyard status --json` and the issue say what failed: `error_kind` for a failing source,
    `warnings` (`record_drop`, `fill_rate_drop`, `rejection_spike`, `unchanged`) for a degraded
@@ -92,8 +96,9 @@ Trigger: a `repair` issue, or `gleanyard status` shows a `failing` or `degraded`
    `include` regex for a sitemap. `blocked` or a terms change is not yours to fix: report it.
 4. If the pinned mode cannot be fixed, re-run the setup procedure's mode order and propose the
    switch in the PR, with evidence for why.
-5. A repair PR passes only when `gleanyard try <id>` prints PASS, field fill rates match the
-   previous run, and `gleanyard validate` is clean. Put the `--markdown` output in the PR.
+5. A repair PR passes only when `gleanyard repair check` prints `ready`: `try` passes, record
+   counts and fill rates match the last good run, `validate` is clean, and nothing outside
+   sources, mappings, fixtures and evidence changed. Put its `--markdown` output in the PR.
 
 ## Procedure: Retire a source
 
