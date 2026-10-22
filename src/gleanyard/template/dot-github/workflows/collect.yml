@@ -21,7 +21,7 @@ jobs:
           path: data/raw
           key: raw-${{ github.run_id }}
           restore-keys: raw-
-      - run: pip install "gleanyard~=0.6.0"
+      - run: pip install "gleanyard~=0.7.0"
       - run: gleanyard validate
       - id: collect
         run: gleanyard collect
@@ -36,7 +36,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add status.json badges data/records data/review exports $(ls -d dataherb.json _dataherb 2>/dev/null)
+          git add status.json badges data/records data/review exports $(ls -d data/changes dataherb.json _dataherb 2>/dev/null)
           git diff --cached --quiet || git commit -m "Collect $(date -u +%F)"
           git push
       - id: health

@@ -45,6 +45,7 @@ discover:                    # optional: also every repo of an owner with a topi
 missed_run_hours: 36         # a report older than this means a scheduled run was missed
 pr_waiting_days: 7
 digest_weekday: 0            # Monday; null turns the weekly digest off
+viewer: false                # true adds a searchable table of each project's export
 ```
 
 `gleanyard init` reminds you to add the topic `gleanyard` to a new project's repo, which is
@@ -79,6 +80,28 @@ often each field is filled now and in the baseline run; a field below 80% of its
 marked amber and the table starts open, before the 50% `fill_rate_drop` warning fires. A
 project that needs attention starts open. The page follows the reader's light or dark
 setting and works on a phone.
+
+## The record viewer
+
+With `viewer: true` in `hub.yaml`, the hub also reads each project's public export
+(`exports/records.jsonl`, or `export_path`) and `gleanyard hub build` writes a page per project
+under `records/`, linked from the dashboard as "Browse N records". The page is a table with a
+search box that filters in the browser; it needs no server. A project listed by URL shows a
+viewer when it names its export:
+
+```yaml
+repos:
+  - {name: Markets, url: https://example.org/markets/status.json,
+     export_url: https://example.org/markets/records.jsonl}
+viewer: true
+viewer_rows: 2000            # rows per project in the viewer; the rest are counted
+```
+
+The export holds only fields each source's rights allow, so the viewer shows nothing the
+project does not already publish. Once the dashboard is on a public Pages site, though,
+anyone can read the export of every watched project, private repos included. Leave `viewer`
+off unless that is what you want. The hub needs no extra access: it reads the export with
+the same token as `status.json`.
 
 ## Alerts fire on change
 

@@ -8,6 +8,7 @@ name: event               # lower-case letters, digits, - and _
 version: 1                # recorded in each record's provenance
 description: One dated public event.
 identity: [title, start_date]
+merge: [title, start_date, venue]   # optional: join the same item from several sources
 fields:
   title: {type: string, required: true}
 ```
@@ -18,6 +19,7 @@ fields:
 | `version` | Integer, default 1. Bump it when the meaning of fields changes. |
 | `identity` | Fields that together identify one record in a source. At least one must be required. |
 | `fields` | Field name (lower_snake_case) to a field definition. |
+| `merge` | Optional. Fields that identify the same item across sources; export joins rows that agree on all of them. See [merging records](../concepts/changes.md#merging-records-across-sources). |
 
 ## Field definition
 

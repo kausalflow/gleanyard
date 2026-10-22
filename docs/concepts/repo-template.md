@@ -19,6 +19,7 @@ cd my-events && git init && gleanyard validate
 | `.github/workflows/collect.yml` | Daily collect and export; commits `status.json`, the badges and the records; checks the terms weekly. |
 | `.github/workflows/validate.yml` | Runs `gleanyard validate` and `gleanyard test` on every pull request. |
 | `.github/workflows/repair.yml` | Opt-in: drafts a fix for a broken source as a pull request ([automatic repair](auto-repair.md)). |
+| `.github/workflows/research.yml` | Opt-in: proposes new candidates in a pull request ([automatic research](auto-research.md)). |
 | `NOTICE` | Credits crawl4ai, which the setup procedure may use. |
 
 ## The assistant works through pull requests
@@ -28,7 +29,8 @@ review, and a few rules that hold throughout: it never enables a source or appro
 reads a site's terms before setup and saves what it found as evidence, it does not evade
 robots.txt or bot protection, and it never edits generated data.
 
-- **Research** finds candidate sources with `check` and `probe` and writes `candidates/`.
+- **Research** finds candidate sources with `check` and `probe` and writes `candidates/`. The
+  `research` workflow can run it unattended; see [automatic research](auto-research.md).
 - **Set up a source** drafts the file with `scaffold`, tries the modes in order, pins the first
   one that makes `try` print `PASS`, and puts the `try --markdown` report in the pull request.
 - **Repair** starts from a `repair` issue, reproduces with `try` and `collect --from-cache`,
@@ -38,7 +40,7 @@ robots.txt or bot protection, and it never edits generated data.
 ## Scheduled runs
 
 The `collect` workflow validates the config, collects, exports, commits `status.json`,
-`data/records`, `data/review` and `exports/`, and keeps the raw cache between runs with the
+`data/records`, `data/review`, `data/changes` and `exports/`, and keeps the raw cache between runs with the
 Actions cache. If any source is failing or `degraded` (see
 [Health](status.md#checks-on-a-run-that-worked)) it opens (or comments on) one issue labelled
 `repair` that lists those sources, then fails the run so it shows red. With

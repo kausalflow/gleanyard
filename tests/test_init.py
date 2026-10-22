@@ -29,6 +29,7 @@ def test_init_creates_a_valid_project(tmp_path):
         ".github/workflows/collect.yml",
         ".github/workflows/validate.yml",
         ".github/workflows/repair.yml",
+        ".github/workflows/research.yml",
         ".claude/skills/gleanyard/SKILL.md",
         "sources/.gitkeep",
         "mappings/.gitkeep",
@@ -87,6 +88,7 @@ def test_template_ships_in_the_built_wheel(tmp_path):
     for expected in (
         "dot-github/workflows/collect.yml",
         "dot-github/workflows/repair.yml",
+        "dot-github/workflows/research.yml",
         "dot-gitignore",
         "dot-claude/skills/gleanyard/SKILL.md",
         "CLAUDE.md",

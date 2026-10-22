@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import json
 from collections.abc import Callable
 from datetime import UTC, datetime
+from typing import Any
 
 import httpx
 from pydantic import BaseModel, Field
@@ -15,12 +17,23 @@ from gleanyard.status import ProjectStatus
 Fetch = Callable[[str], bytes]
 
 
+class ExportSample(BaseModel):
+    """The first rows of a project's public export, for the data viewer."""
+
+    rows: list[dict[str, Any]] = Field(default_factory=list)
+    total: int = 0
+    problem: str | None = None
+
+
 class RepoState(BaseModel):
     repo: str = Field(description="The project's name: owner/name, or the name given to a URL.")
     url: str | None = Field(default=None, description="Set when status.json came from a URL.")
     status: ProjectStatus | None = None
     problem: str | None = Field(default=None, description="Why no usable status.json was read.")
     pulls: list[PullRequest] = Field(default_factory=list)
+    export: ExportSample | None = Field(
+        default=None, description="Set when the hub's viewer is on."
+    )
 
     @property
     def on_github(self) -> bool:
@@ -109,4 +122,37 @@ def read_project(
             state.status = ProjectStatus.model_validate_json(body)
         except ValueError as error:
             state.problem = f"{where} is not a valid report: {error}"
+    if config.viewer:
+        state.export = read_export(item, config, github, fetch)
     return state
+
+
+def read_export(
+    item: Watched, config: HubConfig, github: GitHub | None, fetch: Fetch = fetch_url
+) -> ExportSample | None:
+    """The first ``viewer_rows`` rows of the project's public export, or why there are none."""
+    if item.repo is not None:
+        assert github is not None
+        body = github.get_file(item.repo, config.export_path)
+        if body is None:
+            return ExportSample(problem=f"{config.export_path} not found")
+    elif item.export_url is not None:
+        try:
+            body = fetch(item.export_url)
+        except httpx.HTTPError as error:
+            return ExportSample(problem=f"could not fetch {item.export_url}: {error}")
+    else:
+        return None  # a bare status.json URL names no export
+    sample = ExportSample()
+    for line in body.decode("utf-8", errors="replace").split("\n"):
+        if not line.strip():
+            continue
+        sample.total += 1
+        if len(sample.rows) < config.viewer_rows:
+            try:
+                row = json.loads(line)
+            except ValueError:
+                return ExportSample(problem=f"the export is not JSON lines (line {sample.total})")
+            if isinstance(row, dict):
+                sample.rows.append(row)
+    return sample

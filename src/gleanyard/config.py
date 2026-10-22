@@ -245,6 +245,9 @@ class SourceConfig(StrictModel):
 
 class StorageConfig(StrictModel):
     root: str = "data"
+    changes_days: int = Field(
+        default=90, ge=1, description="Days of change logs (changes/<date>.jsonl) to keep."
+    )
 
 
 _ISO_DURATION = re.compile(
@@ -304,6 +307,10 @@ class ProjectConfig(StrictModel):
     storage: StorageConfig = Field(default_factory=StorageConfig)
     rights_policy: RightsPolicy = Field(default_factory=RightsPolicy)
     export: str = Field(default="exports/records.jsonl", description="Public export path.")
+    changes_feed: str | None = Field(
+        default="exports/changes.json",
+        description="JSON Feed of recent record changes, written on export; null turns it off.",
+    )
     excluded_hosts: list[str] = Field(
         default_factory=list, description="Hosts research must not propose (checked by `check`)."
     )

@@ -44,6 +44,9 @@ class OutputRecord(BaseModel):
     values: dict[str, Any]
     provenance: Provenance
     warnings: list[FieldIssue] = Field(default_factory=list)
+    first_seen: datetime | None = Field(
+        default=None, description="When a record with this id was first collected."
+    )
 
 
 class Rejection(BaseModel):

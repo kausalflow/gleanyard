@@ -23,12 +23,19 @@ Exit code 0 if everything is valid, 1 otherwise.
 Fetches and extracts sources, by default every enabled one. `-s` selects specific sources,
 enabled or not. `--from-cache` re-extracts the newest stored response with no network.
 
-Writes `data/records/<id>.jsonl` and `data/review/<id>.jsonl`. A source counts as healthy
-if it produced records, or is marked `expect_empty: seasonal`. A healthy fresh run becomes
-the source's last-good baseline.
+Writes `data/records/<id>.jsonl` and `data/review/<id>.jsonl`, and logs what changed in
+`data/changes/<date>.jsonl` (see [changes](../concepts/changes.md)). A source counts as
+healthy if it produced records, or is marked `expect_empty: seasonal`. A healthy fresh run
+becomes the source's last-good baseline; a failed empty run keeps the last records.
 
 Exit code 0 if every selected source is healthy, 1 if any failed, 2 if the project does not
 validate.
+
+## `gleanyard changes [PROJECT] [-s ID]... [--since DATE] [--json]`
+
+Lists the records that collects added, changed or removed since `DATE` (default: the last 7
+days), from `data/changes/`. This is the private log, not filtered by rights; the public
+version is the feed that `export` writes.
 
 ## `gleanyard status [PROJECT] [--json]`
 
@@ -55,7 +62,9 @@ writes the dashboard snapshot, and opens or closes alert issues in the hub repo 
 ## `gleanyard hub build [--state PATH] [--out DIR] [--title TEXT]`
 
 Renders the snapshot from `hub run` as a static dashboard (`index.html`) and a Markdown
-overview (`summary.md`, for the workflow's job summary) in `DIR` (default `site/`).
+overview (`summary.md`, for the workflow's job summary) in `DIR` (default `site/`). With
+`viewer: true` in `hub.yaml`, it also writes a searchable page of each project's public export
+to `records/` (see [the record viewer](../concepts/status-hub.md#the-record-viewer)).
 
 ## `gleanyard hub init DIR [--owner OWNER] [--repo OWNER/NAME|URL]... [--pages] [--name NAME]`
 
@@ -144,6 +153,14 @@ run by the same rules that mark a run `degraded`; its fixture must still replay 
 only be a draft, 2 when it cannot be proposed. `--json` adds `files` (what to commit) and the
 Markdown report.
 
+## `gleanyard research check [PROJECT] [--base REF] [--max N] [--json] [--markdown]`
+
+Judges the working tree's changes against `REF` (default `HEAD`) as an unattended research
+run, without a model: only new `candidates/<host>.yaml` files, each with an http(s) `url` on
+that host and a `why`, none for a host that is a source or excluded, and at most `N` (default
+10). Prints `ready` or `not proposable` and exits 0 or 1. The template's opt-in `research`
+workflow runs it; see [automatic research](../concepts/auto-research.md).
+
 ## `gleanyard map SOURCE [PROJECT] [--model ID] [--force] [--dry-run] [--json]`
 
 Drafts (or repairs) the selector mapping of a `selectors` source with crawl4ai's
@@ -169,14 +186,16 @@ Writes the assistant's procedures for the installed version to
 
 Runs an MCP server over stdio for the project, with read-only tools that return the same JSON
 as `--json`: `validate`, `status`, `check_url`, `probe`, `scaffold` (returns the draft, writes
-nothing), `try_source`, `repair_plan`, `repair_check`, `json_schema` and `search_records`
-(the public export only). The procedures are served as prompts and the skill as the resource
-`gleanyard://skill`. Needs the optional extra `pip install 'gleanyard[mcp]'`.
+nothing), `try_source`, `test_fixtures`, `repair_plan`, `repair_check`, `json_schema`,
+`search_records` (the public export only) and `recent_changes` (the public change feed). The procedures are served as prompts and the skill as the resource
+`gleanyard://skill`. `recent_changes` reads the public change feed. Needs the optional extra `pip install 'gleanyard[mcp]'`.
 
 ## `gleanyard export [PROJECT] [--json]`
 
 Writes the rights-filtered public export, by default `exports/records.jsonl` (set `export`
-in `gleanyard.yaml`). It reads stored records, so run `collect` first.
+in `gleanyard.yaml`), joining rows that agree on the schema's `merge` fields, and the
+[change feed](../concepts/changes.md#the-public-feed) `exports/changes.json`. It reads stored
+records, so run `collect` first.
 
 ## `gleanyard json-schema {source|schema|project}`
 
@@ -192,8 +211,9 @@ Optional, at the project root. All keys have defaults.
 schema: schema.yaml
 sources: sources
 user_agent: "my-project (+https://example.org/contact)"
-storage: {root: data}
+storage: {root: data, changes_days: 90}   # change logs older than this are deleted
 export: exports/records.jsonl
+changes_feed: exports/changes.json        # JSON Feed of recent changes; null turns it off
 status: status.json                 # health report, read by the status hub
 excluded_hosts: []                  # hosts `check` reports as excluded
 rights_policy:

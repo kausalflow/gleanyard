@@ -71,6 +71,7 @@ def test_server_lists_read_only_tools_prompts_and_the_skill(root):
         "repair_check",
         "json_schema",
         "search_records",
+        "recent_changes",
     }
     assert all(tool.annotations.read_only_hint for tool in tools.tools)
     assert {prompt.name for prompt in prompts.prompts} == {
@@ -104,6 +105,18 @@ def test_search_reads_only_the_public_export(root):
     assert capped["total"] == 3 and len(capped["records"]) == 1
     (root / "exports" / "records.jsonl").unlink()
     assert payload(call(root, "search_records"))["total"] == 0
+
+
+def test_recent_changes_read_the_public_feed(root):
+    assert payload(call(root, "recent_changes"))["total"] == 0
+    items = [
+        {"id": "a:added", "_gleanyard": {"change": "added", "record": ROWS[0]}},
+        {"id": "b:removed", "_gleanyard": {"change": "removed", "record": ROWS[1]}},
+    ]
+    (root / "exports" / "changes.json").write_text(json.dumps({"items": items}))
+    assert payload(call(root, "recent_changes"))["total"] == 2
+    farm = payload(call(root, "recent_changes", source_id="farm"))
+    assert [item["id"] for item in farm["items"]] == ["b:removed"]
 
 
 def test_prompts_carry_the_procedure_of_the_installed_version(root):
