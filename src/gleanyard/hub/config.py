@@ -29,6 +29,11 @@ class StatusUrl(StrictModel):
 
     name: str = Field(min_length=1, description="How the project is shown on the dashboard.")
     url: str = Field(pattern=r"^https?://", description="URL of the project's status.json.")
+    export_url: str | None = Field(
+        default=None,
+        pattern=r"^https?://",
+        description="URL of the project's public export, for the data viewer.",
+    )
 
 
 class Discover(StrictModel):
@@ -42,6 +47,7 @@ class Watched(StrictModel):
     name: str
     repo: str | None = None
     url: str | None = None
+    export_url: str | None = None
 
 
 def url_name(url: str) -> str:
@@ -72,6 +78,20 @@ class HubConfig(StrictModel):
         default=7, ge=1, description="Alert when a setup or repair PR has waited this long."
     )
     pr_labels: list[str] = Field(default_factory=lambda: ["setup", "repair"])
+    viewer: bool = Field(
+        default=False,
+        description=(
+            "Add a searchable table of each project's public export to the dashboard. The "
+            "export is already rights-filtered, but a published dashboard shows it to anyone, "
+            "private repos included."
+        ),
+    )
+    export_path: str = Field(
+        default="exports/records.jsonl", description="Where each repo keeps its public export."
+    )
+    viewer_rows: int = Field(
+        default=2000, ge=1, description="Rows per project in the viewer; the rest are counted."
+    )
     digest_weekday: int | None = Field(
         default=0, ge=0, le=6, description="Weekly digest day, Monday=0; null turns it off."
     )
@@ -102,7 +122,7 @@ class HubConfig(StrictModel):
         watched = []
         for repo in self.repos:
             if isinstance(repo, StatusUrl):
-                watched.append(Watched(name=repo.name, url=repo.url))
+                watched.append(Watched(name=repo.name, url=repo.url, export_url=repo.export_url))
             elif _is_url(repo):
                 watched.append(Watched(name=url_name(repo), url=repo))
             else:

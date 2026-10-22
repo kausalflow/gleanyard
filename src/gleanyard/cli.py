@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 import os
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Annotated
 
@@ -12,6 +12,7 @@ import typer
 
 from gleanyard import __version__
 from gleanyard.badges import write_badges
+from gleanyard.changes import load_changes
 from gleanyard.config import ProjectConfig, SourceConfig
 from gleanyard.dataherb import write_job_status, write_metadata
 from gleanyard.errors import ConfigError, SourceError
@@ -21,13 +22,15 @@ from gleanyard.hub.config import load_hub_config
 from gleanyard.hub.dashboard import render_dashboard, render_summary
 from gleanyard.hub.github import HttpGitHub
 from gleanyard.hub.state import HubState, collect_state
+from gleanyard.hub.viewer import VIEWER_DIR, write_viewers
 from gleanyard.init import init_hub, init_project
 from gleanyard.mapping import draft_mapping
 from gleanyard.probe import probe as probe_url
 from gleanyard.project import load_project
 from gleanyard.repair import check_repair, plan_repair
 from gleanyard.replay import replay_project
-from gleanyard.run import collect_source, export_project
+from gleanyard.research import MAX_CANDIDATES, check_research
+from gleanyard.run import collect_source, export_project, record_store
 from gleanyard.scaffold import scaffold as scaffold_url
 from gleanyard.schema import ProjectSchema
 from gleanyard.skill import skill_state, write_skill
@@ -42,6 +45,10 @@ repair_app = typer.Typer(
     no_args_is_help=True, help="Automated repair: which sources to fix, and whether a fix holds."
 )
 app.add_typer(repair_app, name="repair")
+research_app = typer.Typer(
+    no_args_is_help=True, help="Automated research: whether proposed candidates may be a PR."
+)
+app.add_typer(research_app, name="research")
 
 JsonFlag = Annotated[bool, typer.Option("--json", help="Print machine-readable JSON.")]
 ProjectDir = Annotated[
@@ -173,6 +180,33 @@ def export(root: ProjectDir = Path("."), as_json: JsonFlag = False) -> None:
         typer.echo(f"wrote {count} records to {path}")
         if metadata:
             typer.echo(f"wrote DataHerb metadata to {metadata}")
+
+
+@app.command()
+def changes(
+    root: ProjectDir = Path("."),
+    source: SourceOption = None,
+    since: Annotated[
+        datetime | None,
+        typer.Option(formats=["%Y-%m-%d"], help="From this day on (YYYY-MM-DD); default: 7 days."),
+    ] = None,
+    as_json: JsonFlag = False,
+) -> None:
+    """List records added, changed or removed by recent collects (from data/, unfiltered)."""
+    project = _loaded(root)
+    day = since.date() if since else datetime.now(UTC).date() - timedelta(days=7)
+    found = load_changes(record_store(project), since=day, sources=set(source) if source else None)
+    if as_json:
+        typer.echo(json.dumps([item.model_dump(mode="json") for item in found], indent=2))
+        return
+    identity = project.schema.identity if project.schema else []
+    for item in found:
+        values = item.record.values
+        name = " / ".join(str(values[f]) for f in identity if f in values) or item.id
+        fields = f" ({', '.join(item.fields)})" if item.fields else ""
+        typer.echo(f"{item.at:%Y-%m-%d %H:%M} {item.change:8} {item.source_id}: {name}{fields}")
+    if not found:
+        typer.echo(f"no changes since {day}")
 
 
 @app.command()
@@ -622,7 +656,10 @@ def hub_build(
     (out / "index.html").write_text(render_dashboard(state, title), encoding="utf-8")
     (out / "state.json").write_text(state.model_dump_json(indent=2) + "\n", encoding="utf-8")
     (out / "summary.md").write_text(render_summary(state, title), encoding="utf-8")
+    viewers = write_viewers(state, out, title)
     typer.echo(f"wrote {out / 'index.html'} and {out / 'summary.md'}")
+    if viewers:
+        typer.echo(f"wrote {len(viewers)} record viewer(s) to {out / VIEWER_DIR}")
 
 
 @hub_app.command("check")
@@ -729,3 +766,37 @@ def repair_check(
             typer.echo(f"  note: {note}")
     if not result.ready:
         raise typer.Exit(1 if result.proposable else 2)
+
+
+@research_app.command("check")
+def research_check(
+    root: ProjectDir = Path("."),
+    base: Annotated[str, typer.Option(help="Git ref the changes are compared with.")] = "HEAD",
+    max_candidates: Annotated[
+        int, typer.Option("--max", help="Most candidates one run may propose.")
+    ] = MAX_CANDIDATES,
+    as_json: JsonFlag = False,
+    markdown: Annotated[
+        bool, typer.Option("--markdown", help="Print a PR description instead.")
+    ] = False,
+) -> None:
+    """Judge uncommitted changes as a research run: new candidates only. Exit 0 if proposable."""
+    try:
+        result = check_research(root, base, max_candidates)
+    except RuntimeError as error:
+        typer.echo(f"error: {error}", err=True)
+        raise typer.Exit(2) from error
+    if as_json:
+        typer.echo(json.dumps(result.summary(), indent=2))
+    elif markdown:
+        typer.echo(result.markdown())
+    else:
+        typer.echo("ready" if result.proposable else "not proposable")
+        for problem in result.problems:
+            typer.echo(f"  problem: {problem}")
+        for item in result.candidates:
+            typer.echo(f"  {'ok' if not item.problems else 'FAIL':4}  {item.path}")
+            for problem in item.problems:
+                typer.echo(f"        {problem}")
+    if not result.proposable:
+        raise typer.Exit(1)

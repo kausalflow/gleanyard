@@ -8,6 +8,7 @@ only people with access to the hub repo can see.
 
 from __future__ import annotations
 
+import re
 from datetime import datetime
 from html import escape
 
@@ -44,6 +45,12 @@ margin:0;padding:0}.fields summary{padding:.2rem 0;font-size:.8125rem;color:var(
 background:var(--green);vertical-align:middle;margin-right:.4rem}.bar.drift{background:var(--amber)}
 @media (max-width:36rem){.hide-sm{display:none}}
 """
+
+
+def viewer_name(repo: str) -> str:
+    """A file name for a project's record viewer: owner/name becomes owner--name.html."""
+    return re.sub(r"[^A-Za-z0-9._-]+", "-", repo.replace("/", "--")) + ".html"
+
 
 DRIFT_RATIO = 0.8  # a field filling under 80% of its baseline is marked, before it alerts at 50%
 
@@ -111,11 +118,16 @@ def _repo(repo: RepoState, now: datetime) -> str:
         body += "</table>"
     if repo.on_github:
         link = f"https://github.com/{escape(repo.repo)}"
-        actions = (
-            f"<p class=muted><a href='{link}/actions'>Actions</a> · <a href='{link}'>Repo</a></p>"
-        )
+        links = [f"<a href='{link}/actions'>Actions</a>", f"<a href='{link}'>Repo</a>"]
     else:
-        actions = f"<p class=muted><a href='{escape(repo.url or '')}'>status.json</a></p>"
+        links = [f"<a href='{escape(repo.url or '')}'>status.json</a>"]
+    if repo.export is not None:
+        if repo.export.problem:
+            links.append(f"<span class=problem>records: {escape(repo.export.problem)}</span>")
+        else:
+            page = f"records/{viewer_name(repo.repo)}"
+            links.insert(0, f"<a href='{escape(page)}'>Browse {repo.export.total} records</a>")
+    actions = f"<p class=muted>{' · '.join(links)}</p>"
     return (
         f"<details{' open' if repo.level != 'green' else ''}><summary>"
         f"<span class='dot {repo.level}' role=img aria-label='{repo.level}'></span>"

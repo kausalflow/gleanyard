@@ -198,11 +198,32 @@ def build_server(root: Path) -> MCPServer:
             if needle and needle not in line.casefold():
                 continue
             row = json.loads(line)
-            if source_id and row.get("_source", {}).get("source_id") != source_id:
+            if source_id and source_id not in _row_sources(row):
                 continue
             matches.append(row)
         limit = max(1, min(limit, SEARCH_LIMIT))
         return {"export": str(path), "total": len(matches), "records": matches[:limit]}
+
+    @server.tool(annotations=LOCAL)
+    @reported
+    def recent_changes(source_id: str | None = None, limit: int = 20) -> dict[str, Any]:
+        """Records added, changed or removed lately, newest first, from the public change
+        feed (exports/changes.json, rights-filtered). Only exported fields are visible."""
+        project = load_project(root)
+        if not project.config.changes_feed:
+            raise ValueError("the change feed is turned off (changes_feed in gleanyard.yaml)")
+        path = root / project.config.changes_feed
+        if not path.is_file():
+            return {"feed": str(path), "total": 0, "items": []}
+        items = json.loads(path.read_text(encoding="utf-8")).get("items", [])
+        if source_id:
+            items = [
+                item
+                for item in items
+                if source_id in _row_sources(item.get("_gleanyard", {}).get("record", {}))
+            ]
+        limit = max(1, min(limit, SEARCH_LIMIT))
+        return {"feed": str(path), "total": len(items), "items": items[:limit]}
 
     steps = procedures()
     rules = (
@@ -247,3 +268,9 @@ def build_server(root: Path) -> MCPServer:
         return skill_text()
 
     return server
+
+
+def _row_sources(row: dict[str, Any]) -> set[str]:
+    """The sources of an exported row; a merged row has several."""
+    sources = row.get("_sources") or [row.get("_source", {})]
+    return {item.get("source_id") for item in sources}

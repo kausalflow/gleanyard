@@ -106,6 +106,13 @@ class ProjectSchema(StrictModel):
         description="Fields that together identify one record within a source.",
     )
     fields: dict[str, FieldSpec] = Field(min_length=1)
+    merge: list[str] = Field(
+        default_factory=list,
+        description=(
+            "Fields that identify the same item across sources (for example title, start, "
+            "venue). Export joins exported records that agree on all of them into one row."
+        ),
+    )
 
     @model_validator(mode="after")
     def check_references(self):
@@ -118,6 +125,12 @@ class ProjectSchema(StrictModel):
         optional = [name for name in self.identity if not self.fields[name].required]
         if optional and len(optional) == len(self.identity):
             raise ValueError("identity needs at least one required field")
+        unknown = [name for name in self.merge if name not in self.fields]
+        if unknown:
+            raise ValueError(f"merge names unknown fields: {', '.join(unknown)}")
+        personal = [n for n in self.merge if self.fields[n].field_class == FieldClass.PERSONAL]
+        if personal:
+            raise ValueError(f"merge cannot use personal fields, which never export: {personal}")
         return self
 
     @property

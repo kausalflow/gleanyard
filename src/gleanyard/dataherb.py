@@ -112,6 +112,17 @@ def build_metadata(project: Project, rows: int, size: int, today: date | None = 
                 "description": "Provenance: source_id, url, retrieved_at, mode, attribution.",
             }
         )
+        if schema.merge:
+            fields.append(
+                {
+                    "name": "_sources",
+                    "type": "array",
+                    "description": (
+                        "On a row merged from several sources: each source's provenance and "
+                        f"record id. Rows merge when they agree on {', '.join(schema.merge)}."
+                    ),
+                }
+            )
         resources.append(
             {
                 "name": "records",

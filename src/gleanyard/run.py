@@ -5,6 +5,7 @@ Storage layout under the project's storage root (``data/`` by default)::
     raw/                     content-addressed raw cache (see cache.py)
     records/<source>.jsonl   latest schema-valid records per source
     review/<source>.jsonl    latest rejected records per source, for review
+    changes/<date>.jsonl     records added, changed or removed by each run (see changes.py)
 """
 
 from __future__ import annotations
@@ -12,7 +13,7 @@ from __future__ import annotations
 import hashlib
 import json
 from collections.abc import Callable
-from datetime import date
+from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
 from urllib.parse import parse_qsl, urlencode, urlsplit
 
@@ -20,6 +21,15 @@ import httpx
 from pydantic import BaseModel, Field
 
 from gleanyard.cache import RawCache
+from gleanyard.changes import (
+    FEED_DAYS,
+    append_changes,
+    carry_first_seen,
+    change_feed,
+    diff_records,
+    load_changes,
+    prune_changes,
+)
 from gleanyard.collect import Extraction, OutputRecord, Rejection, extract
 from gleanyard.config import Delivery, LlmExtract, Pagination, SelectorsExtract, SourceConfig
 from gleanyard.errors import FilterIgnored, PaginationChanged, SourceError, StructureChanged
@@ -27,6 +37,7 @@ from gleanyard.export import public_record
 from gleanyard.extract.llm import LlmSession, ModelClient, PydanticAiClient
 from gleanyard.extract.selectors import SelectorSchema
 from gleanyard.fetch import Fetcher, Response
+from gleanyard.merge import merge_rows
 from gleanyard.project import Project
 from gleanyard.readers import read_sitemap
 from gleanyard.schema import FieldIssue
@@ -55,6 +66,11 @@ def digest_records(records: list[OutputRecord]) -> str:
     return hashlib.sha256("\n".join(values).encode()).hexdigest()
 
 
+def record_store(project: Project) -> LocalObjectStore:
+    """The project's private storage: raw cache, records, review and change logs."""
+    return _store(project)
+
+
 def _store(project: Project) -> LocalObjectStore:
     return LocalObjectStore(project.root / project.config.storage.root)
 
@@ -67,6 +83,7 @@ def collect_source(
     client: httpx.Client | None = None,
     today: date | None = None,
     llm_client: ModelClient | None = None,
+    now: datetime | None = None,
 ) -> SourceRun:
     assert project.schema is not None
     actions = source.rights.allowed_actions
@@ -123,9 +140,17 @@ def collect_source(
             error=str(error),
             from_cache=from_cache,
         )
-    _write_jsonl(store, f"records/{source.id}.jsonl", result.records)
-    _write_jsonl(store, f"review/{source.id}.jsonl", result.rejections)
     healthy = bool(result.records) or source.expect_empty == "seasonal"
+    previous = load_records(project, source.id)
+    carry_first_seen(previous, result.records)
+    if healthy:
+        now = now or datetime.now(UTC)
+        append_changes(store, diff_records(source.id, previous, result.records, now))
+        prune_changes(store, project.config.storage.changes_days, now.date())
+        _write_jsonl(store, f"records/{source.id}.jsonl", result.records)
+    # An empty run that is not seasonal is a failure, not the removal of every record: the
+    # last records stay until a healthy run replaces them.
+    _write_jsonl(store, f"review/{source.id}.jsonl", result.rejections)
     if healthy and not from_cache:
         cache.mark_good(manifest)
     return SourceRun(
@@ -329,13 +354,27 @@ def export_project(project: Project, today: date | None = None) -> tuple[Path, i
             row = public_record(record, project.schema, rights, project.config.rights_policy, today)
             if row is not None:
                 rows.append(row)
+    rows = merge_rows(rows, project.schema)
     path = project.root / project.config.export
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(
         "".join(json.dumps(row, ensure_ascii=False, sort_keys=True) + "\n" for row in rows),
         encoding="utf-8",
     )
+    if project.config.changes_feed:
+        write_change_feed(project, today or date.today())
     return path, len(rows)
+
+
+def write_change_feed(project: Project, today: date) -> Path:
+    """Write the public JSON Feed of the last ``FEED_DAYS`` days of changes."""
+    assert project.config.changes_feed is not None
+    changes = load_changes(_store(project), since=today - timedelta(days=FEED_DAYS))
+    feed = change_feed(project, changes, today)
+    path = project.root / project.config.changes_feed
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(feed, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    return path
 
 
 def _write_jsonl(store: LocalObjectStore, key: str, rows: list[BaseModel]) -> None:

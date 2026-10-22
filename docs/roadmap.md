@@ -61,6 +61,11 @@ access, in a repo of its own.
   `gleanyard badge` draws README badges, and the hub shows field fill rates against the
   baseline. 0.6.1 adds `test --update --today` for old fixtures and one shared terms review
   for many sources (`evidence:`), with one grouped alert.
+- What changed (0.7.0): each collect logs added, changed and removed records, and export
+  publishes them as a rights-filtered JSON Feed; a schema's `merge` fields join the same item
+  from several sources into one exported row; the hub can show each project's export as a
+  searchable table; and the opt-in `research` workflow proposes new candidates, checked by
+  `gleanyard research check`.
 
 ## Decisions so far
 

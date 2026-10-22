@@ -56,6 +56,8 @@ def public_record(
         "retrieved_at": record.provenance.retrieved_at.isoformat(),
         "mode": record.provenance.mode,
     }
+    if record.first_seen is not None:
+        source["first_seen"] = record.first_seen.isoformat()
     if rights.attribution_text:
         source["attribution"] = rights.attribution_text
     if rights.license_id:

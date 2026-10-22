@@ -27,8 +27,10 @@ gleanyard terms [-s ID] [--force]          # have the terms or robots.txt change
 gleanyard collect -s ID                    # real run for one source
 gleanyard collect --from-cache -s ID       # re-extract the last cached pages, no network
 gleanyard status                           # health of every source
+gleanyard changes [--since DATE]           # records added, changed or removed lately
 gleanyard repair plan                      # which broken sources a repair may attempt
 gleanyard repair check                     # may the uncommitted edit become a repair PR?
+gleanyard research check                   # may the new candidates become a research PR?
 gleanyard json-schema source               # exact shape of a source file
 gleanyard skill                            # refresh this file after upgrading gleanyard
 ```
@@ -39,14 +41,16 @@ either a bug or, when the change is meant, a reason to refresh the snapshot in t
 
 ## Procedure: Research
 
-Trigger: the owner asks for sources, or a scheduled research run.
+Trigger: the owner asks for sources, or a scheduled research run. When the `research`
+workflow is turned on, it runs this procedure unattended and opens the PR.
 
 1. Read `research.md` and `schema.yaml`. Search the web for pages that publish what the schema
    describes. Prefer a feed (`.ics`, RSS, JSON API) over an HTML page.
 2. For each URL run `gleanyard check URL`; skip hosts that are sources, candidates or excluded.
 3. Run `gleanyard probe URL`. Write `candidates/<host>.yaml` with `url`, `why`, the best probe
    option, and the legal pages the probe found.
-4. Open one PR with the new candidates. Do not set anything up yet.
+4. Check with `gleanyard research check`: new candidate files only, one per host, none for a
+   source or excluded host. Open one PR with the new candidates. Do not set anything up yet.
 
 ## Procedure: Set up a source
 

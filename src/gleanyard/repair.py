@@ -307,6 +307,8 @@ def _protected_changes(root: Path, base: str, path: str, notes: list[str]) -> li
 def _generated_paths(project: Project) -> list[PurePosixPath]:
     config = project.config
     paths = [config.storage.root, config.export, config.status]
+    if config.changes_feed:
+        paths.append(config.changes_feed)
     if config.dataherb is not None:
         paths += [config.dataherb.metadata, config.dataherb.status_dir]
     return [PurePosixPath(path) for path in paths]
