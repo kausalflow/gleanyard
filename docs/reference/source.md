@@ -41,6 +41,7 @@ retention: {raw_days: 30}
 | `expect_change_days` | Optional. Mark the source `degraded` when its records have not changed for this many days. See [Health](../concepts/status.md). |
 | `coverage` | Where the source applies. Informational. |
 | `rights` | See [Rights and export](../concepts/rights.md). |
+| `evidence` | Optional. Folder under `evidence/` holding this source's terms review; default the source id. Sources sharing one site name the same folder. See [watching the terms](../concepts/rights.md#watching-the-terms). |
 | `retention` | `raw_days` (default 30) and `normalized_days` (default 730). |
 
 ## `reader` options

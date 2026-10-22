@@ -59,7 +59,8 @@ access, in a repo of its own.
 - Checks between runs (0.6.0): `gleanyard test` replays fixtures offline against snapshots on
   every pull request, `gleanyard terms` notices when a source's terms or robots.txt change,
   `gleanyard badge` draws README badges, and the hub shows field fill rates against the
-  baseline.
+  baseline. 0.6.1 adds `test --update --today` for old fixtures and one shared terms review
+  for many sources (`evidence:`), with one grouped alert.
 
 ## Decisions so far
 

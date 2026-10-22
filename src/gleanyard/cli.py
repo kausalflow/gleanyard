@@ -329,6 +329,15 @@ def test_command(
         bool,
         typer.Option("--update", help="Write the snapshot from today's replay, if it passes."),
     ] = False,
+    today: Annotated[
+        datetime | None,
+        typer.Option(
+            "--today",
+            formats=["%Y-%m-%d"],
+            help="With --update: judge the fixture as of this date (YYYY-MM-DD), for a page "
+            "saved before its events passed. Default: today.",
+        ),
+    ] = None,
     as_json: JsonFlag = False,
     markdown: Annotated[
         bool, typer.Option("--markdown", help="Print a PR description instead.")
@@ -343,7 +352,10 @@ def test_command(
         if missing:
             raise typer.BadParameter(f"unknown source(s): {', '.join(missing)}")
         selected = [known[name] for name in source]
-    report = replay_project(project, selected, update=update)
+    if today is not None and not update:
+        raise typer.BadParameter("--today only applies with --update; a snapshot keeps its date")
+    day = today.date() if today is not None else None
+    report = replay_project(project, selected, update=update, today=day)
     if as_json:
         typer.echo(json.dumps([item.model_dump() for item in report.results], indent=2))
     elif markdown:

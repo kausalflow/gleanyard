@@ -94,7 +94,7 @@ seven.
 | Fields stopped filling | A source has a `fill_rate_drop` warning, such as dates that stopped parsing. |
 | More records rejected | A source has a `rejection_spike` warning. |
 | Data stopped changing | A source has an `unchanged` warning (only with `expect_change_days`). |
-| Terms changed | A source's terms pages or robots.txt changed since its last review ([watching the terms](rights.md#watching-the-terms)). |
+| Terms changed | Terms pages or robots.txt changed since their last review ([watching the terms](rights.md#watching-the-terms)). One alert per repo, listing each changed page with the sources that rely on it. |
 | Missed run | The report's `generated_at` is older than `missed_run_hours`. |
 | PR waiting | A `setup` or `repair` pull request has been open longer than `pr_waiting_days`. |
 | No report | `status.json` is missing or invalid, or the repo cannot be read. |

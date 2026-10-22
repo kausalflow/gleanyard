@@ -20,6 +20,9 @@ LABEL = "hub-alert"
 MARKER = "<!-- gleanyard-hub:{key} -->"
 
 
+TERMS_SHOWN = 5  # source ids listed per changed page; the rest are counted
+
+
 class Alert(BaseModel):
     key: str
     kind: str
@@ -88,8 +91,9 @@ def _repo_alerts(repo: RepoState, config: HubConfig, now: datetime) -> list[Aler
                 )
             elif source.health == "degraded":
                 alerts += _degraded_alerts(name, source)
-            if source.terms is not None and source.terms.changed:
-                alerts.append(_terms_alert(name, source))
+        changed = [s for s in repo.status.sources if s.terms is not None and s.terms.changed]
+        if changed:
+            alerts.append(_terms_alert(name, changed))
     for pull in repo.pulls:
         waited = now - pull.created_at
         if waited > timedelta(days=config.pr_waiting_days):
@@ -141,20 +145,37 @@ def _degraded_alerts(name: str, source: SourceStatus) -> list[Alert]:
     ]
 
 
-def _terms_alert(name: str, source: SourceStatus) -> Alert:
-    assert source.terms is not None
-    since = f"{source.terms.changed_at:%F}" if source.terms.changed_at else "the last check"
+def _terms_alert(name: str, sources: list[SourceStatus]) -> Alert:
+    """One alert per repo, listing each changed page once with the sources that rely on it.
+
+    Many sources can share one site and one review (``evidence:``); a changed imprint then
+    raises one issue, not one per source.
+    """
+    by_url: dict[str, list[str]] = {}
+    for source in sources:
+        assert source.terms is not None
+        for url in source.terms.changed:
+            by_url.setdefault(url, []).append(source.id)
+    lines = []
+    for url, ids in by_url.items():
+        shown = ", ".join(f"`{item}`" for item in ids[:TERMS_SHOWN])
+        more = f" and {len(ids) - TERMS_SHOWN} more" if len(ids) > TERMS_SHOWN else ""
+        lines.append(f"- {url} ({len(ids)} source(s): {shown}{more})")
+    reviews = sorted({f"{s.terms.reviewed_on}" for s in sources if s.terms is not None})
+    noticed = [s.terms.changed_at for s in sources if s.terms is not None and s.terms.changed_at]
+    since = f"{min(noticed):%F}" if noticed else "the last check"
+    subject = sources[0].id if len(sources) == 1 else f"{len(sources)} sources"
     return Alert(
-        key=f"{name}:{source.id}:terms_changed",
+        key=f"{name}:terms_changed",
         kind="terms_changed",
-        title=f"{name}: {source.id} terms changed",
+        title=f"{name}: terms changed for {subject}",
         body=(
-            f"The text of these pages differs from the review of {source.terms.reviewed_on} "
+            f"The text of these pages differs from the review of {', '.join(reviews)} "
             f"(noticed {since}):\n\n"
-            + "\n".join(f"- {url}" for url in source.terms.changed)
-            + "\n\nRead them again and add a new `evidence/"
-            + f"{source.id}/<date>-terms.yaml`; adjust `rights` if the terms now say otherwise. "
-            "The issue closes after the next `gleanyard terms` run."
+            + "\n".join(lines)
+            + "\n\nRead them again and add a new `evidence/<folder>/<date>-terms.yaml` in the "
+            "folder the sources name (`evidence:`, default the source id); adjust `rights` if "
+            "the terms now say otherwise. The issue closes after the next `gleanyard terms` run."
         ),
     )
 

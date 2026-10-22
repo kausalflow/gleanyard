@@ -93,7 +93,7 @@ warning. Exits 1 on `FAIL`. `--markdown` prints the report as a pull request des
 `--save-pages DIR` also writes the fetched pages there (`01.html`, ...), so a repair can read
 the page the source returns today.
 
-## `gleanyard test [PROJECT] [-s ID]... [--update] [--json] [--markdown]`
+## `gleanyard test [PROJECT] [-s ID]... [--update [--today DATE]] [--json] [--markdown]`
 
 Replays each source's fixture, `tests/fixtures/<id>.<ext>`, offline: no network and no model.
 It extracts the page with the source's pinned mode and compares the records with the snapshot
@@ -101,16 +101,18 @@ It extracts the page with the source's pinned mode and compares the records with
 `min: today` bound does not reject an old fixture. A difference names the records that went
 missing, appeared or changed, by their `identity` fields. Sources without a fixture or a
 snapshot, and `llm` sources, are skipped. `--update` writes the snapshot from today's replay,
-only if it passes the same thresholds as `try`. Exits 1 on any difference. The template's
+only if it passes the same thresholds as `try`. For a fixture saved before its events passed,
+`--update --today 2026-10-10` judges it as of the day it was saved, and the snapshot keeps that
+date. Exits 1 on any difference. The template's
 `validate` workflow runs it on every pull request, and `repair check` runs it for each
 repaired source. See [fixtures and snapshots](../concepts/setting-up-a-source.md#fixtures-and-snapshots).
 
 ## `gleanyard terms [PROJECT] [-s ID]... [--force] [--json]`
 
 Fetches the pages listed in each enabled source's newest `evidence/<id>/<date>-terms.yaml`
-(under `pages`, each with a `url`) and the source host's `robots.txt`, and compares a
+(under `pages`, each with a `url`; the folder is the source's `evidence` key when set) and the source host's `robots.txt`, and compares a
 fingerprint of their visible text with the one taken at that review. Each source is checked at
-most once every 7 days unless `--force`. Results go to `terms` in `status.json`. A changed page
+most once every 7 days unless `--force`, and a page that several sources list is read once. Results go to `terms` in `status.json`. A changed page
 stays flagged until a newer evidence file is added, and exits 1 while any source is flagged.
 See [watching the terms](../concepts/rights.md#watching-the-terms).
 

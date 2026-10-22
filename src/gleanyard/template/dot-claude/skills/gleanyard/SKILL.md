@@ -70,7 +70,8 @@ Trigger: a candidate the owner marked ready.
    `--force` to redraft an existing mapping. The mapping format is documented at
    https://kausalflow.github.io/gleanyard/.
 4. Save one fixture page to `tests/fixtures/<id>.<ext>` (small, public, no personal data),
-   then `gleanyard test -s <id> --update` to write `tests/fixtures/<id>.expected.json`.
+   then `gleanyard test -s <id> --update` to write `tests/fixtures/<id>.expected.json`. If the
+   fixture's events have passed, add `--today <date the page was saved>`.
    Commit both.
 5. Set `expect_empty: seasonal` only if the source is empty out of season. Set
    `expect_change_days` (for example 7) on sources whose records should change often, such as
@@ -105,8 +106,9 @@ When the `repair` workflow is turned on, it runs this procedure unattended and o
 Trigger: a `terms` issue, or `gleanyard terms` prints `CHANGED` for a source.
 
 1. `gleanyard status --json` lists the changed pages under the source's `terms.changed`. Read
-   each page and the last `evidence/<id>/<date>-terms.yaml`.
-2. Write a new `evidence/<id>/<today>-terms.yaml` with the same shape: every page you read,
+   each page and the last `evidence/<folder>/<date>-terms.yaml`, where the folder is the
+   source's `evidence` key if set (one review shared by many sources) and its id otherwise.
+2. Write a new `evidence/<folder>/<today>-terms.yaml` with the same shape: every page you read,
    the relevant quote as it stands now, and your reading of what changed.
 3. If the new terms allow less than the source's `rights` say, propose the narrower `rights`
    (or `enabled: false`) in the same PR and say why; the owner decides. If nothing that

@@ -2,6 +2,7 @@ from datetime import UTC, date, datetime, timedelta
 
 import httpx
 import pytest
+import yaml
 from test_html import make_project
 from typer.testing import CliRunner
 
@@ -169,3 +170,50 @@ def test_cli_writes_status_and_exits_1_on_a_change(tmp_path, monkeypatch):
     pages["/impressum"] = TERMS.replace(b"geschuetzt", b"frei")
     result = runner.invoke(app, ["terms", str(root), "--force"])
     assert result.exit_code == 1 and "CHANGED" in result.stdout
+
+
+def share_evidence(root, folder="site"):
+    """Move the review to a shared folder and point the source at it."""
+    (root / "evidence" / "s").rename(root / "evidence" / folder)
+    path = root / "sources" / "s.yaml"
+    data = yaml.safe_load(path.read_text())
+    data["evidence"] = folder
+    path.write_text(yaml.safe_dump(data))
+
+
+def test_sources_can_share_one_review_folder(tmp_path):
+    root = write_project(tmp_path / "p")
+    share_evidence(root)
+    second = yaml.safe_load((root / "sources" / "s.yaml").read_text())
+    second["id"] = "t"
+    (root / "sources" / "t.yaml").write_text(yaml.safe_dump(second))
+    project = load_project(root)
+    assert project.ok, project.issues
+    calls = []
+    results = check_terms(
+        project, project.sources, {}, client=site({"/impressum": TERMS}, calls), now=NOW
+    )
+    assert [r.state.reviewed_on for r in results] == [date(2026, 10, 10)] * 2
+    assert calls.count("/impressum") == 1  # one site, one read
+
+
+def test_a_review_dated_checked_at_or_by_file_name_counts(tmp_path):
+    root = write_project(tmp_path / "p")
+    path = next((root / "evidence" / "s").iterdir())
+    path.write_text(path.read_text().replace("read_at: 2026-10-10", "checked_at: 2026-10-09"))
+    assert latest_evidence(load_project(root), load_project(root).sources[0]).reviewed_on == date(
+        2026, 10, 9
+    )
+    path.write_text(path.read_text().replace("checked_at: 2026-10-09\n", ""))
+    project = load_project(root)
+    assert latest_evidence(project, project.sources[0]).reviewed_on == date(2026, 10, 10)
+
+
+def test_a_missing_shared_folder_is_a_config_issue(tmp_path):
+    root = write_project(tmp_path / "p")
+    share_evidence(root)
+    (root / "evidence" / "site").rename(root / "evidence" / "elsewhere")
+    issues = load_project(root).issues
+    assert [(i.path, i.message) for i in issues] == [
+        ("evidence", "evidence folder evidence/site/ not found")
+    ]
