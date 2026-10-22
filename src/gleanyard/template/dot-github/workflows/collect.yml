@@ -62,7 +62,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh label create terms --color 5319E7 --force
-          body=$(jq -r '"The terms or robots.txt of these sources changed since their review (see the procedure \"Review changed terms\"):\n" + ([.sources[] | select(.terms.changed // [] | length > 0) | "- `\(.id)`: \(.terms.changed | join(", "))"] | join("\n"))' status.json)
+          body=$(jq -r '"The terms or robots.txt of these sources changed since their review (see the procedure \"Review changed terms\"):\n" + ([.sources[] | {id, url: (.terms.changed // [])[]}] | group_by(.url) | map("- \(.[0].url) (\(length) source(s): \([.[:5][] | "`\(.id)`"] | join(", "))\(if length > 5 then " and \(length - 5) more" else "" end))") | join("\n"))' status.json)
           existing=$(gh issue list --label terms --state open --json number --jq '.[0].number // empty')
           if [ -z "$existing" ]; then
             gh issue create --label terms --title "Terms changed" --body "$body"

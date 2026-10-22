@@ -94,3 +94,25 @@ def test_cli_test_exits_1_on_a_difference(tmp_path):
         "1 record(s) missing: Synthetic tree register / Synthetic City",
         "1 record(s) new: Tree register / Synthetic City",
     ]
+
+
+def test_update_judges_the_fixture_as_of_the_given_today(tmp_path):
+    root = project_with_fixtures(tmp_path)
+    path = root / "schema.yaml"
+    schema = yaml.safe_load(path.read_text())
+    schema["fields"]["modified"]["scope"] = {"max": "today"}  # fixture dates: 2026-08/09
+    path.write_text(yaml.safe_dump(schema))
+    # A page saved now, judged as of 2000, has every record out of scope.
+    late = ["test", str(root), "-s", "portal-api", "--update", "--today", "2000-01-01"]
+    assert runner.invoke(app, late).exit_code == 1
+    early = ["test", str(root), "-s", "portal-api", "--update", "--today", "2026-10-01"]
+    assert runner.invoke(app, early).exit_code == 0
+    snapshot = json.loads((root / "tests/fixtures/portal-api.expected.json").read_text())
+    assert snapshot["today"] == "2026-10-01"
+    assert runner.invoke(app, ["test", str(root), "-s", "portal-api"]).exit_code == 0
+
+
+def test_today_without_update_is_refused(tmp_path):
+    root = project_with_fixtures(tmp_path)
+    result = runner.invoke(app, ["test", str(root), "--today", "2026-01-01"])
+    assert result.exit_code == 2

@@ -63,6 +63,7 @@ PROTECTED = (
     "coverage",
     "rights",
     "retention",
+    "evidence",
 )
 
 

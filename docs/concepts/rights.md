@@ -76,6 +76,13 @@ suggested_tier: facts_only
 `terms`. Markup, scripts, navigation and spacing do not count; the wording does. The
 template's `collect` workflow runs it every day, and it checks each source at most once a week.
 
+Sources that share one site and one review, such as many towns served by the same app, keep
+that review once and name its folder in each source file with `evidence: <folder>`:
+`evidence/<folder>/<date>-terms.yaml`. `gleanyard validate` checks that the folder exists, the
+pages are read once per check, and a change raises one `terms` issue and one hub alert that
+list each changed page with the sources that rely on it. The review's date is `read_at` (or
+`checked_at`), or else the date in the file name.
+
 When a page's text differs from the review, the source is flagged: `gleanyard terms` exits 1,
 the `collect` workflow opens a `terms` issue, the source's badge reads `terms changed` and the
 status hub raises a `terms_changed` alert. The flag stays, even if the page changes back,

@@ -152,6 +152,8 @@ def _cross_check(
             )
     if isinstance(extract, SelectorsExtract) and not (root / extract.selectors).is_file():
         issue(["extract", "selectors"], f"selector file {extract.selectors!r} not found")
+    if source.evidence is not None and not (root / "evidence" / source.evidence).is_dir():
+        issue(["evidence"], f"evidence folder evidence/{source.evidence}/ not found")
     if source.filter is not None and source.filter.field not in schema.fields:
         issue(["filter", "field"], _unknown_field(source.filter.field, schema))
     actions = source.rights.allowed_actions

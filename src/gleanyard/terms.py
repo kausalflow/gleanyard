@@ -66,9 +66,14 @@ class TermsResult(BaseModel):
     state: TermsState | None = None
 
 
+def evidence_id(source: SourceConfig) -> str:
+    """The evidence folder of a source: its own id unless it shares a review."""
+    return source.evidence or source.id
+
+
 def latest_evidence(project: Project, source: SourceConfig) -> Evidence | None:
-    """The newest ``evidence/<id>/*-terms.yaml`` with its date and page URLs."""
-    directory = project.root / EVIDENCE / source.id
+    """The newest ``evidence/<folder>/*-terms.yaml`` with its date and page URLs."""
+    directory = project.root / EVIDENCE / evidence_id(source)
     if not directory.is_dir():
         return None
     files = sorted(directory.glob("*terms*.yaml"))
@@ -79,7 +84,9 @@ def latest_evidence(project: Project, source: SourceConfig) -> Evidence | None:
         data = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
     except yaml.YAMLError:
         data = {}
-    reviewed = data.get("read_at") if isinstance(data, dict) else None
+    reviewed = None
+    if isinstance(data, dict):
+        reviewed = data.get("read_at", data.get("checked_at"))
     if not isinstance(reviewed, date):
         match = DATED_NAME.match(path.name)
         reviewed = date.fromisoformat(match.group(1)) if match else None
@@ -139,7 +146,8 @@ def check_terms(
         old = previous.get(source.id)
         evidence = latest_evidence(project, source)
         if evidence is None:
-            result.state, result.note = old, f"no evidence/{source.id}/<date>-terms.yaml to watch"
+            folder = evidence_id(source)
+            result.state, result.note = old, f"no evidence/{folder}/<date>-terms.yaml to watch"
             continue
         due = force or old is None or old.checked_at is None
         due = due or now - old.checked_at >= timedelta(days=interval_days)

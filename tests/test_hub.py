@@ -503,9 +503,30 @@ def test_changed_terms_raise_an_alert_and_turn_the_repo_amber():
     state = collect_state(config(), github, NOW)
     assert state.repos[0].level == "amber"
     alerts = {a.key: a for a in compute_alerts(state, config())}
-    alert = alerts["o/a:x:terms_changed"]
-    assert alert.kind == "terms_changed"
+    alert = alerts["o/a:terms_changed"]
+    assert alert.kind == "terms_changed" and alert.title == "o/a: terms changed for x"
     assert "https://x.example/impressum" in alert.body and "2026-10-01" in alert.body
+
+
+def test_sources_sharing_changed_terms_raise_one_alert_per_repo():
+    from gleanyard.terms import TermsState
+
+    def terms(*urls):
+        return TermsState(reviewed_on="2026-10-01", changed=list(urls), changed_at=NOW)
+
+    towns = [source(f"town-{n}", terms=terms("https://x.example/impressum")) for n in range(7)]
+    towns[0] = source(
+        "town-0", terms=terms("https://x.example/impressum", "https://x.example/robots.txt")
+    )
+    github = FakeGitHub(files={"o/a": status(*towns), "o/b": status(source("y"))})
+    alerts = [a for a in compute_alerts(collect_state(config(), github, NOW), config())]
+    terms_alerts = [a for a in alerts if a.kind == "terms_changed"]
+    assert len(terms_alerts) == 1
+    alert = terms_alerts[0]
+    assert alert.title == "o/a: terms changed for 7 sources"
+    assert "- https://x.example/impressum (7 source(s): `town-0`" in alert.body
+    assert "and 2 more" in alert.body
+    assert "- https://x.example/robots.txt (1 source(s): `town-0`)" in alert.body
 
 
 def test_dashboard_folds_field_fill_rates_and_marks_drift():

@@ -205,6 +205,14 @@ class SourceConfig(StrictModel):
     )
     coverage: Coverage = Field(default_factory=Coverage)
     rights: SourceRights
+    evidence: str | None = Field(
+        default=None,
+        pattern=SOURCE_ID,
+        description=(
+            "Folder under evidence/ that holds this source's terms review; default: the source "
+            "id. Sources that share one site and one review name the same folder."
+        ),
+    )
     retention: Retention = Field(default_factory=Retention)
 
     model_config = {"extra": "forbid", "populate_by_name": True}
