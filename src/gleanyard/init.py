@@ -123,3 +123,20 @@ HUB_ALERTS_ONLY = {
         "it on GitHub Pages instead, recreate the hub with `gleanyard hub init --pages`."
     ),
 }
+
+
+REGISTRY_TEMPLATE = Path(__file__).parent / "registry" / "template"
+
+
+def init_registry(root: Path, name: str, url: str | None = None) -> list[Path]:
+    """Write the source registry template; ``url`` is where its Pages site will be served."""
+    if not NAME.match(name):
+        raise ConfigError(f"registry name {name!r} must be lowercase letters, digits and dashes")
+    if url is not None and not url.startswith(("https://", "http://")):
+        raise ConfigError(f"registry url {url!r} must start with https://")
+    replacements = {
+        "{{registry}}": name,
+        "{{url}}": f"url: {url}" if url else "# url: https://<owner>.github.io/<repo>/",
+        "{{registry_flag}}": f" --registry {url}" if url else "",
+    }
+    return write_template(REGISTRY_TEMPLATE, root, replacements)

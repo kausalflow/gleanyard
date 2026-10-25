@@ -1,0 +1,8 @@
+name: lab-pages
+description: Synthetic lab-pages source for gleanyard's tests
+schema: dataset
+tags:
+- example
+maintainers:
+- kausalflow
+fixture_basis: Made-up page written for gleanyard's tests; nothing in it is real.

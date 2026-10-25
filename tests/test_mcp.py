@@ -1,5 +1,6 @@
 import asyncio
 import json
+from pathlib import Path
 
 import pytest
 
@@ -72,6 +73,7 @@ def test_server_lists_read_only_tools_prompts_and_the_skill(root):
         "json_schema",
         "search_records",
         "recent_changes",
+        "search_registry",
     }
     assert all(tool.annotations.read_only_hint for tool in tools.tools)
     assert {prompt.name for prompt in prompts.prompts} == {
@@ -80,6 +82,7 @@ def test_server_lists_read_only_tools_prompts_and_the_skill(root):
         "repair",
         "review_terms",
         "retire_source",
+        "add_from_registry",
     }
     assert skill.contents[0].text == skill_text()
 
@@ -132,3 +135,12 @@ def test_a_project_that_does_not_validate_is_reported(root):
     (root / "schema.yaml").write_text("not: [valid")
     result = call(root, "repair_plan")
     assert result.is_error and "does not validate" in result.content[0].text
+
+
+def test_search_registry_reads_the_configured_registry(root, monkeypatch):
+    registry = Path(__file__).parents[1] / "examples" / "registry"
+    monkeypatch.setenv("GLEANYARD_REGISTRY", str(registry))
+    found = payload(call(root, "search_registry", query="feed"))
+    assert [entry["id"] for entry in found["recipes"]] == ["city-feed"]
+    monkeypatch.setenv("GLEANYARD_REGISTRY", str(root))
+    assert call(root, "search_registry").is_error

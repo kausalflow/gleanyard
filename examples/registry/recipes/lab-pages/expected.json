@@ -1,0 +1,17 @@
+{
+  "records": {
+    "rec_1957417ecfdcc3f205a3": {
+      "description": "Core samples.",
+      "formats": [
+        "CSV",
+        "GeoJSON"
+      ],
+      "landing_page": "https://lab.example/data/soil",
+      "license": "https://creativecommons.org/licenses/by/4.0/",
+      "modified": "2026-07-04T12:00:00+00:00",
+      "publisher": "Synthetic Soil Lab",
+      "title": "Synthetic soil samples"
+    }
+  },
+  "today": "2026-10-21"
+}

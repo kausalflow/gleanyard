@@ -72,6 +72,45 @@ Creates the status hub repo from the bundled template. `--owner` watches every r
 user or organization with the topic `gleanyard`; `--repo` lists projects. Without `--pages`
 nothing is published and the overview goes to each run's summary page.
 
+## `gleanyard search [QUERY] [--schema NAME] [--registry URL|DIR] [--json]`
+
+Lists the recipes in a [source registry](../concepts/registry.md) whose id, name, description,
+host or tags hold every word of `QUERY`, with their health across projects. The registry is
+`--registry`, else `$GLEANYARD_REGISTRY`, else `https://kausalflow.github.io/gleanyard-registry/`;
+it can be a built site or a local checkout.
+
+## `gleanyard add RECIPE [PROJECT] [--id ID] [--registry URL|DIR] [--force] [--json]`
+
+Installs a recipe as a source: `sources/<id>.yaml`, its mapping, fixture and evidence, with
+`enabled: false`, `rights.review_status: pending` and a `recipe` key. It validates the project
+and replays the fixture to write the snapshot; if either fails it removes what it wrote and
+exits 1. `--force` keeps the files, and allows a host the project already collects or
+excludes. Exit 2 when the registry or the recipe cannot be read.
+
+## `gleanyard registry check [ROOT] [--json]`
+
+Checks a registry checkout offline: `registry.yaml`, and for each recipe its files, that it is
+disabled with pending rights and a shareable tier, and that its fixture still gives
+`expected.json`. Exit 1 on any problem.
+
+## `gleanyard registry build [ROOT] [--out DIR] [--health/--no-health]`
+
+Runs the check, then writes the static site to `DIR` (default `site/`): `index.json`, the
+recipe files and schemas, and `index.html`. With `--health` (the default) it reads the
+`status.json` of the projects in `registry.yaml` and, with `discover`, of public repos with the
+topic; `GITHUB_TOKEN` is used for the topic search when set.
+
+## `gleanyard registry pack SOURCE --project DIR --maintainer LOGIN --description TEXT --fixture-basis TEXT [--tag TAG]... [ROOT]`
+
+Copies a working source from a project into the registry at `ROOT` as `recipes/<id>/`, and the
+project's schema into `schemas/` if it is missing there. Refuses `internal_only`, `unknown` and
+`blocked` sources, `llm` sources, and sources without a fixture, snapshot or evidence.
+
+## `gleanyard registry init DIR [--url URL] [--name NAME]`
+
+Creates a registry repo from the bundled template: `registry.yaml`, the `check` and `publish`
+workflows, a README and a `CLAUDE.md`.
+
 ## `gleanyard probe URL [--root DIR] [--json]`
 
 Looks at a site without a model: reads `robots.txt` and the page (two requests), finds
@@ -187,8 +226,9 @@ Writes the assistant's procedures for the installed version to
 Runs an MCP server over stdio for the project, with read-only tools that return the same JSON
 as `--json`: `validate`, `status`, `check_url`, `probe`, `scaffold` (returns the draft, writes
 nothing), `try_source`, `test_fixtures`, `repair_plan`, `repair_check`, `json_schema`,
-`search_records` (the public export only) and `recent_changes` (the public change feed). The procedures are served as prompts and the skill as the resource
-`gleanyard://skill`. `recent_changes` reads the public change feed. Needs the optional extra `pip install 'gleanyard[mcp]'`.
+`search_records` (the public export only), `recent_changes` (the public change feed) and
+`search_registry` (recipes in the source registry). The procedures are served as prompts and
+the skill as the resource `gleanyard://skill`. Needs the optional extra `pip install 'gleanyard[mcp]'`.
 
 ## `gleanyard export [PROJECT] [--json]`
 
