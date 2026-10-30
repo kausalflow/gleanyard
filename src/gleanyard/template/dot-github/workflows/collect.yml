@@ -26,7 +26,10 @@ jobs:
       - id: collect
         run: gleanyard collect
         continue-on-error: true
-      - run: gleanyard export
+      - id: export
+        run: |
+          gleanyard export --json > "$RUNNER_TEMP/export.json"
+          echo "csv=$(jq -r '.csv // empty' "$RUNNER_TEMP/export.json")" >> "$GITHUB_OUTPUT"
       - id: terms
         name: Have the terms or robots.txt changed? (each source at most once a week)
         run: gleanyard terms
@@ -36,7 +39,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add status.json badges data/records data/review exports $(ls -d data/changes dataherb.json _dataherb 2>/dev/null)
+          git add status.json badges data/records data/review exports $(ls -d data/changes dataherb.json _dataherb 2>/dev/null) ${{ steps.export.outputs.csv }}
           git diff --cached --quiet || git commit -m "Collect $(date -u +%F)"
           git push
       - id: health
