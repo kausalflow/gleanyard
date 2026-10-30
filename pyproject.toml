@@ -1,6 +1,6 @@
 [project]
 name = "gleanyard"
-version = "0.8.2"
+version = "0.10.0"
 description = "Collect structured data from recurring web sources into a schema you define."
 readme = "README.md"
 license = "MIT"

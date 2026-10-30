@@ -64,7 +64,9 @@ retention: {raw_days: 30}
 ## `extract` options
 
 `mode` picks the shape; each mode accepts `defaults`, constant values for schema fields the
-source does not carry.
+source does not carry. `fields` and `selectors` also accept `explode`, a dot path to a list in
+each item: every element becomes its own candidate record (see
+[one record per list element](../concepts/delivery-and-extraction.md#one-record-per-list-element)).
 
 | Mode | Keys |
 | --- | --- |

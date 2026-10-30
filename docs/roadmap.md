@@ -72,6 +72,11 @@ access, in a repo of its own.
   builds a static site for Pages (`registry build`), and shows each recipe's health from the
   public `status.json` of the projects that use it, so it costs nothing to run.
 
+- Grouped pages and CSV (0.10.0): `explode` turns each element of a list in an item into its
+  own record, selector fields can `split` text into lists, and `export_csv` writes the export
+  as CSV too, listed in `dataherb.json`. Found while moving DataHerb's dataset scrapers onto
+  gleanyard.
+
 ## Decisions so far
 
 - Recurring sources are the focus; one-off research is possible through `llm` mode but not

@@ -138,6 +138,14 @@ class _ExtractBase(StrictModel):
         default_factory=dict,
         description="Constant values for schema fields the source does not carry (venue, city).",
     )
+    explode: str | None = Field(
+        default=None,
+        pattern=r"^[^.\s]+(\.[^.\s]+)*$",
+        description=(
+            "Dot path to a list in each item (groups.models); one candidate record per element, "
+            "with the enclosing keys copied in. fields and selectors modes only."
+        ),
+    )
 
 
 class FieldsExtract(_ExtractBase):
@@ -243,6 +251,10 @@ class SourceConfig(StrictModel):
                 f"extract mode {self.extract.mode!r} does not fit delivery {self.delivery.value!r};"
                 f" use one of: {', '.join(sorted(allowed))}"
             )
+        if self.extract.explode and self.extract.mode not in {"fields", "selectors"}:
+            raise ValueError(
+                f"extract.explode does not fit mode {self.extract.mode!r}; use fields or selectors"
+            )
         if self.pagination is not None and self.delivery not in PAGED_DELIVERIES:
             allowed = ", ".join(sorted(d.value for d in PAGED_DELIVERIES))
             raise ValueError(
@@ -325,6 +337,10 @@ class ProjectConfig(StrictModel):
     storage: StorageConfig = Field(default_factory=StorageConfig)
     rights_policy: RightsPolicy = Field(default_factory=RightsPolicy)
     export: str = Field(default="exports/records.jsonl", description="Public export path.")
+    export_csv: str | None = Field(
+        default=None,
+        description="Also write the public export as CSV to this path; off by default.",
+    )
     changes_feed: str | None = Field(
         default="exports/changes.json",
         description="JSON Feed of recent record changes, written on export; null turns it off.",

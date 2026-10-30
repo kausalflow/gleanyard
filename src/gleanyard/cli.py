@@ -194,13 +194,18 @@ def export(root: ProjectDir = Path("."), as_json: JsonFlag = False) -> None:
     project = _loaded(root)
     path, count = export_project(project)
     metadata = write_metadata(project, count, path)
+    csv_path = project.root / project.config.export_csv if project.config.export_csv else None
     if as_json:
         result = {"path": str(path), "records": count}
+        if csv_path:
+            result["csv"] = str(csv_path)
         if metadata:
             result["dataherb"] = str(metadata)
         typer.echo(json.dumps(result))
     else:
         typer.echo(f"wrote {count} records to {path}")
+        if csv_path:
+            typer.echo(f"wrote them as CSV to {csv_path}")
         if metadata:
             typer.echo(f"wrote DataHerb metadata to {metadata}")
 

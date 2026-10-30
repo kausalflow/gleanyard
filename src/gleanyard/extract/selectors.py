@@ -16,8 +16,10 @@ crawl4ai at setup and then run here with no crawl4ai (and no browser) installed:
 
 Field types: ``text``, ``attribute``, ``html``, ``regex``, ``nested`` (an object),
 ``list`` (a list of values) and ``nested_list`` (a list of objects). A field may set
-``default`` and ``transform`` (``lowercase``, ``uppercase``, ``strip``). An empty
-``selector`` means the matched element itself.
+``default``, ``transform`` (``lowercase``, ``uppercase``, ``strip``) and ``split``, a
+regular expression that cuts a text value into a list ("A, B, C" with ``",\\s*"``); a
+``list`` field splits each of its values. An empty ``selector`` means the matched element
+itself.
 """
 
 from __future__ import annotations
@@ -44,6 +46,7 @@ class SelectorField(StrictModel):
     pattern: str | None = None
     default: Any = None
     transform: Literal["lowercase", "uppercase", "strip"] | None = None
+    split: str | None = None
     fields: list[SelectorField] = Field(default_factory=list)
 
     @model_validator(mode="after")
@@ -54,6 +57,11 @@ class SelectorField(StrictModel):
             if not self.pattern:
                 raise ValueError(f"field {self.name!r}: regex fields need `pattern`")
             re.compile(self.pattern)
+        if self.split is not None:
+            if self.type in {"nested", "nested_list"}:
+                raise ValueError(f"field {self.name!r}: {self.type} fields cannot `split`")
+            if re.compile(self.split).search(""):
+                raise ValueError(f"field {self.name!r}: `split` must not match an empty string")
         if self.type in {"nested", "nested_list"} and not self.fields:
             raise ValueError(f"field {self.name!r}: {self.type} fields need `fields`")
         if self.selector:
@@ -117,8 +125,8 @@ def _value(element: lxml.html.HtmlElement, field: SelectorField) -> Any:
     if field.type in {"list", "nested_list"}:
         targets = element.cssselect(field.selector) if field.selector else [element]
         if field.type == "list":
-            values = [_scalar(target, field) for target in targets]
-            return [value for value in values if value not in (None, "")] or field.default
+            values = [_split(_scalar(target, field), field) for target in targets]
+            return [value for part in values for value in part] or field.default
         return [_nested(target, field) for target in targets] or field.default
     target = _first(element, field.selector)
     if target is None:
@@ -126,7 +134,18 @@ def _value(element: lxml.html.HtmlElement, field: SelectorField) -> Any:
     if field.type == "nested":
         return _nested(target, field)
     value = _scalar(target, field)
+    if field.split is not None:
+        return _split(value, field) or field.default
     return field.default if value in (None, "") else value
+
+
+def _split(value: str | None, field: SelectorField) -> list[str]:
+    if value in (None, ""):
+        return []
+    if field.split is None:
+        return [value]
+    parts = (part.strip() for part in re.split(field.split, value))
+    return [part for part in parts if part]
 
 
 def _first(element: lxml.html.HtmlElement, selector: str) -> lxml.html.HtmlElement | None:

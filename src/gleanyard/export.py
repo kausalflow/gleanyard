@@ -11,6 +11,9 @@ required fields cannot all be exported is left out entirely.
 
 from __future__ import annotations
 
+import csv
+import io
+import json
 from datetime import date
 from typing import Any
 
@@ -64,3 +67,43 @@ def public_record(
         source["license"] = rights.license_id
         source["license_url"] = rights.license_url
     return {"id": record.id, **values, "_source": source}
+
+
+# Prefixed like ``_source`` in the JSON export, so they never clash with a schema field.
+CSV_SOURCE_COLUMNS = ["_source", "_source_url", "_attribution", "_license"]
+
+
+def csv_columns(schema: ProjectSchema) -> list[str]:
+    fields = [n for n, spec in schema.fields.items() if spec.field_class != FieldClass.PERSONAL]
+    return ["id", *fields, *CSV_SOURCE_COLUMNS]
+
+
+def csv_text(rows: list[dict[str, Any]], schema: ProjectSchema) -> str:
+    """The public export as CSV: one column per schema field, list values joined by "; "."""
+    columns = csv_columns(schema)
+    buffer = io.StringIO()
+    writer = csv.writer(buffer, lineterminator="\n")
+    writer.writerow(columns)
+    for row in rows:
+        source = row.get("_source", {})
+        flat = {
+            **row,
+            "_source": source.get("source_id"),
+            "_source_url": source.get("url"),
+            "_attribution": source.get("attribution"),
+            "_license": source.get("license"),
+        }
+        writer.writerow([_cell(flat.get(column)) for column in columns])
+    return buffer.getvalue()
+
+
+def _cell(value: Any) -> str:
+    if value is None:
+        return ""
+    if isinstance(value, bool):
+        return "true" if value else "false"
+    if isinstance(value, list):
+        return "; ".join(_cell(element) for element in value)
+    if isinstance(value, dict):
+        return json.dumps(value, ensure_ascii=False, sort_keys=True)
+    return str(value)

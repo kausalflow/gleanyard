@@ -172,3 +172,20 @@ def test_template_turns_dataherb_on(tmp_path):
     project = load_project(root)
     assert project.config.dataherb is not None
     assert project.config.dataherb.id == "new-project"
+
+
+def test_export_csv_is_written_and_listed(tmp_path):
+    project = project_with(tmp_path, OPEN)
+    config = {"dataherb": {}, "export_csv": "dataset/events.csv"}
+    (project.root / "gleanyard.yaml").write_text(yaml.safe_dump(config))
+    result = runner.invoke(app, ["export", str(project.root), "--json"])
+    assert result.exit_code == 0, result.output
+    assert json.loads(result.output)["csv"].endswith("dataset/events.csv")
+    header = (project.root / "dataset" / "events.csv").read_text().splitlines()[0]
+    fields = "source_url,start_date,time_text,title,venue"
+    assert header == f"id,{fields},_source,_source_url,_attribution,_license"
+    resources = json.loads((project.root / "dataherb.json").read_text())["datapackage"]["resources"]
+    (csv_resource,) = [r for r in resources if r["format"] == "csv"]
+    assert csv_resource["path"] == "dataset/events.csv"
+    names = [field["name"] for field in csv_resource["schema"]["fields"]]
+    assert names == header.split(",")

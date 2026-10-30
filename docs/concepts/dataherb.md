@@ -26,7 +26,9 @@ file with its row count, size and a schema built from `schema.yaml`: field types
 Table Schema types, `id` is the primary key, and `_source` carries provenance. Personal data
 never appears, because export never writes it. When no enabled source may be exported (for
 example all are `internal_only`), the metadata lists no files and says `internal`, so the
-catalog shows the dataset without offering a download.
+catalog shows the dataset without offering a download. With `export_csv` set in
+`gleanyard.yaml`, the CSV copy of the export is listed too, so a DataHerb dataset can keep
+the CSV path its users already read.
 
 `gleanyard collect` writes a **job status** (`dataherb.status/v1`) next to `status.json`:
 `_dataherb/status/<id>/latest.json`, plus one file per run in `runs/`. It reads:

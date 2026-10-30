@@ -3,7 +3,7 @@ from datetime import UTC, date, datetime
 import pytest
 
 from gleanyard.collect import OutputRecord, Provenance
-from gleanyard.export import public_record
+from gleanyard.export import csv_text, public_record
 from gleanyard.rights import RightsPolicy, SourceRights
 from gleanyard.schema import ProjectSchema
 
@@ -130,3 +130,18 @@ def test_open_licence_is_carried():
     )
     assert row["_source"]["license"] == "dl-de/by-2-0"
     assert row["_source"]["attribution"] == "Stadt Köln"
+
+
+def test_csv_has_one_column_per_public_field_and_flattens_values():
+    row = export(rights(license_id="CC0-1.0", license_url="https://example.org/cc0"))
+    row["tags"] = ["a", "b"]
+    schema = SCHEMA.model_copy(deep=True)
+    schema.fields["tags"] = schema.fields["title"].model_copy(update={"required": False})
+    lines = csv_text([row, {"id": "rec_2", "title": 'Say "hi", all'}], schema).splitlines()
+    assert lines[0] == (
+        "id,title,source_url,description,image_url,tags,_source,_source_url,_attribution,_license"
+    )
+    assert lines[1] == (
+        "rec_1,Jazz,https://example.org/e/1,,,a; b,src,https://example.org/feed,,CC0-1.0"
+    )
+    assert lines[2] == 'rec_2,"Say ""hi"", all",,,,,,,,'

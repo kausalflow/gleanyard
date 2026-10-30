@@ -255,6 +255,10 @@ in `gleanyard.yaml`), joining rows that agree on the schema's `merge` fields, an
 [change feed](../concepts/changes.md#the-public-feed) `exports/changes.json`. It reads stored
 records, so run `collect` first.
 
+With `export_csv` set, it also writes the same rows as CSV: `id`, one column per schema field
+(personal fields never), then `_source`, `_source_url`, `_attribution` and `_license`. List
+values are joined with `; ` and objects such as money are written as JSON.
+
 ## `gleanyard json-schema {source|schema|project}`
 
 Prints the JSON Schema for a config file, for editor completion and AI tools.
@@ -271,6 +275,7 @@ sources: sources
 user_agent: "my-project (+https://example.org/contact)"
 storage: {root: data, changes_days: 90}   # change logs older than this are deleted
 export: exports/records.jsonl
+export_csv: null                    # also write the export as CSV here, e.g. dataset/records.csv
 changes_feed: exports/changes.json        # JSON Feed of recent changes; null turns it off
 status: status.json                 # health report, read by the status hub
 excluded_hosts: []                  # hosts `check` reports as excluded
