@@ -52,7 +52,8 @@ def test_workflows_are_valid_yaml_with_the_expected_jobs(tmp_path):
     collect = yaml.safe_load((root / ".github/workflows/collect.yml").read_text())
     assert "schedule" in collect[True] and "workflow_dispatch" in collect[True]
     steps = [step.get("run", "") for step in collect["jobs"]["collect"]["steps"]]
-    assert "gleanyard collect" in steps and "gleanyard export" in steps
+    assert "gleanyard collect" in steps
+    assert any(step.startswith("gleanyard export --json") for step in steps)
     validate = yaml.safe_load((root / ".github/workflows/validate.yml").read_text())
     assert "pull_request" in validate[True]
     steps = [step.get("run", "") for step in validate["jobs"]["validate"]["steps"]]

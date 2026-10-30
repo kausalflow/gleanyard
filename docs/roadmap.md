@@ -75,6 +75,11 @@ access, in a repo of its own.
   marketplace, brings the skill and the MCP server; `gleanyard mcp --allow-writes` adds
   write tools for clients without a shell, which never enable a source or approve rights.
 
+- Grouped pages and CSV (0.10.0): `explode` turns each element of a list in an item into its
+  own record, selector fields can `split` text into lists, and `export_csv` writes the export
+  as CSV too, listed in `dataherb.json`. Found while moving DataHerb's dataset scrapers onto
+  gleanyard.
+
 ## Decisions so far
 
 - Recurring sources are the focus; one-off research is possible through `llm` mode but not

@@ -21,6 +21,7 @@ from gleanyard.config import (
     SourceConfig,
 )
 from gleanyard.errors import ModelError
+from gleanyard.extract.explode import explode_items
 from gleanyard.extract.fields import map_item
 from gleanyard.extract.jsonld import jsonld_nodes, map_node
 from gleanyard.extract.llm import LlmSession
@@ -83,14 +84,15 @@ def mapped_values(
     """Run the source's pinned mode over one response; one dict per candidate record."""
     mode = source.extract
     if isinstance(mode, FieldsExtract):
-        return [map_item(item, mode) for item in read_items(source, response.body, today=today)]
+        items = explode_items(read_items(source, response.body, today=today), mode.explode)
+        return [map_item(item, mode) for item in items]
     if isinstance(mode, JsonLdExtract):
         nodes = jsonld_nodes(source.id, response.body, mode.types)
         return [map_node(node, schema, mode.map, mode.defaults) for node in nodes]
     if isinstance(mode, SelectorsExtract):
         if selectors is None:
             raise ValueError(f"{source.id}: the selector mapping was not loaded")
-        items = run_selectors(source.id, response.body, selectors)
+        items = explode_items(run_selectors(source.id, response.body, selectors), mode.explode)
         return [{**mode.defaults, **item} for item in items]
     if isinstance(mode, LlmExtract):
         if llm is None:

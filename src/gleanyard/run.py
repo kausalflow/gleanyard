@@ -33,7 +33,7 @@ from gleanyard.changes import (
 from gleanyard.collect import Extraction, OutputRecord, Rejection, extract
 from gleanyard.config import Delivery, LlmExtract, Pagination, SelectorsExtract, SourceConfig
 from gleanyard.errors import FilterIgnored, PaginationChanged, SourceError, StructureChanged
-from gleanyard.export import public_record
+from gleanyard.export import csv_text, public_record
 from gleanyard.extract.llm import LlmSession, ModelClient, PydanticAiClient
 from gleanyard.extract.selectors import SelectorSchema
 from gleanyard.fetch import Fetcher, Response
@@ -361,6 +361,10 @@ def export_project(project: Project, today: date | None = None) -> tuple[Path, i
         "".join(json.dumps(row, ensure_ascii=False, sort_keys=True) + "\n" for row in rows),
         encoding="utf-8",
     )
+    if project.config.export_csv:
+        csv_path = project.root / project.config.export_csv
+        csv_path.parent.mkdir(parents=True, exist_ok=True)
+        csv_path.write_text(csv_text(rows, project.schema), encoding="utf-8")
     if project.config.changes_feed:
         write_change_feed(project, today or date.today())
     return path, len(rows)

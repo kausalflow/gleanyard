@@ -92,8 +92,38 @@ can be drafted by crawl4ai at setup and then runs here with plain HTML parsing.
 
 `baseSelector` matches one element per candidate record. Field types are `text` (default),
 `attribute`, `html`, `regex` (`pattern`, first group), `list`, `nested` and `nested_list`;
-a field may have `default` and `transform` (`lowercase`, `uppercase`, `strip`). Header rows
-and other rows that fail the schema land in the review file, not in the records.
+a field may have `default`, `transform` (`lowercase`, `uppercase`, `strip`) and `split`, a
+regular expression that cuts a text value into a list (`",\\s*"` for "A, B, C"; a `list`
+field splits each of its values). Header rows and other rows that fail the schema land in the
+review file, not in the records.
+
+### One record per list element
+
+Pages often group what should be separate records: a heading over a list of series, each
+series listing several models on one line. CSS cannot reach from a model up to its heading,
+so select the group and `explode` the list instead:
+
+```json
+{
+  "baseSelector": "div.group",
+  "fields": [
+    {"name": "cadence", "selector": "strong", "type": "regex", "pattern": "(Monthly|Quarterly)"},
+    {"name": "series_list", "selector": "ul.series > li", "type": "nested_list", "fields": [
+      {"name": "series", "selector": "b"},
+      {"name": "model", "selector": "ul > li", "type": "list", "split": ",\\s*"}
+    ]}
+  ]
+}
+```
+
+```yaml
+extract: {mode: selectors, selectors: mappings/devices.json, explode: series_list.model}
+```
+
+Each model becomes one record with its `series` and `cadence`; keys of the enclosing objects
+are copied in, and an inner key wins over an outer one of the same name. A group without the
+list (a footnote block) yields no record. `explode` works the same way on feed items in
+`fields` mode, where the path names source keys.
 
 ## `llm`: a model reads the page
 

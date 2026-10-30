@@ -24,6 +24,7 @@ from typing import Any
 
 from gleanyard import __version__
 from gleanyard.config import DataherbConfig
+from gleanyard.export import CSV_SOURCE_COLUMNS, csv_columns
 from gleanyard.project import Project
 from gleanyard.rights import export_blocker
 from gleanyard.run import SourceRun
@@ -134,8 +135,40 @@ def build_metadata(project: Project, rows: int, size: int, today: date | None = 
                 "schema": {"fields": fields, "primaryKey": "id"},
             }
         )
+        if project.config.export_csv:
+            resources.append(_csv_resource(project, rows))
     document["datapackage"] = {"resources": resources}
     return {key: value for key, value in document.items() if value is not None}
+
+
+def _csv_resource(project: Project, rows: int) -> dict[str, Any]:
+    schema = project.schema
+    assert schema is not None and project.config.export_csv is not None
+    path = project.root / project.config.export_csv
+    fields = [{"name": "id", "type": "string", "description": "Stable record id."}]
+    for name in csv_columns(schema)[1 : -len(CSV_SOURCE_COLUMNS)]:
+        field = _field(name, schema.fields[name])
+        if field["type"] in {"array", "object"}:
+            field["type"] = "string"
+        fields.append(field)
+    fields += [
+        {"name": "_source", "type": "string", "description": "Id of the row's source."},
+        {"name": "_source_url", "type": "string", "description": "Page the row was read from."},
+        {"name": "_attribution", "type": "string", "description": "Required attribution."},
+        {"name": "_license", "type": "string", "description": "Licence of the source."},
+    ]
+    resource: dict[str, Any] = {
+        "name": "records-csv",
+        "path": project.config.export_csv,
+        "format": "csv",
+        "mediatype": "text/csv",
+        "encoding": "utf-8",
+        "rows": rows,
+        "schema": {"fields": fields, "primaryKey": "id"},
+    }
+    if path.exists():
+        resource["bytes"] = path.stat().st_size
+    return resource
 
 
 def write_metadata(project: Project, rows: int, export_path: Path) -> Path | None:
