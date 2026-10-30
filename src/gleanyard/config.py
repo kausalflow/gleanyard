@@ -182,6 +182,14 @@ Extract = Annotated[
 ]
 
 
+class RecipeOrigin(StrictModel):
+    """Where a source came from when `gleanyard add` installed it from a source registry."""
+
+    id: str = Field(pattern=SOURCE_ID, description="The recipe's id in the registry.")
+    digest: str = Field(description="Content digest of the recipe as it was installed.")
+    registry: str | None = Field(default=None, description="The registry it came from.")
+
+
 class SourceConfig(StrictModel):
     schema_version: Literal[1] = 1
     id: str = Field(pattern=SOURCE_ID)
@@ -217,6 +225,13 @@ class SourceConfig(StrictModel):
         ),
     )
     retention: Retention = Field(default_factory=Retention)
+    recipe: RecipeOrigin | None = Field(
+        default=None,
+        description=(
+            "Set by `gleanyard add`: the registry recipe this source came from. status.json "
+            "reports it, so a registry can show how the recipe fares across projects."
+        ),
+    )
 
     model_config = {"extra": "forbid", "populate_by_name": True}
 

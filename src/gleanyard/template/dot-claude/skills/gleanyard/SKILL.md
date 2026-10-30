@@ -31,6 +31,8 @@ gleanyard changes [--since DATE]           # records added, changed or removed l
 gleanyard repair plan                      # which broken sources a repair may attempt
 gleanyard repair check                     # may the uncommitted edit become a repair PR?
 gleanyard research check                   # may the new candidates become a research PR?
+gleanyard search [QUERY]                   # recipes in the public source registry
+gleanyard add RECIPE [--id ID]             # install one: disabled, rights pending
 gleanyard json-schema source               # exact shape of a source file
 gleanyard skill                            # refresh this file after upgrading gleanyard
 ```
@@ -44,8 +46,10 @@ either a bug or, when the change is meant, a reason to refresh the snapshot in t
 Trigger: the owner asks for sources, or a scheduled research run. When the `research`
 workflow is turned on, it runs this procedure unattended and opens the PR.
 
-1. Read `research.md` and `schema.yaml`. Search the web for pages that publish what the schema
-   describes. Prefer a feed (`.ics`, RSS, JSON API) over an HTML page.
+1. Read `research.md` and `schema.yaml`. Run `gleanyard search` with words from the brief: a
+   recipe that fits is a candidate too (write `recipe: <id>` in its candidate file). Search
+   the web for pages that publish what the schema describes. Prefer a feed (`.ics`, RSS, JSON
+   API) over an HTML page.
 2. For each URL run `gleanyard check URL`; skip hosts that are sources, candidates or excluded.
 3. Run `gleanyard probe URL`. Write `candidates/<host>.yaml` with `url`, `why`, the best probe
    option, and the legal pages the probe found.
@@ -83,6 +87,31 @@ Trigger: a candidate the owner marked ready.
 6. Fill `rights` from the terms you read; leave `review_status: pending` and `enabled: false`.
 7. Open a PR whose description is the output of `gleanyard try <id> --markdown`, plus the
    evidence file and your reading of the terms. The owner reviews, sets rights and enables.
+
+## Procedure: Add a source from the registry
+
+Trigger: the owner marks ready a candidate that names a `recipe`, or asks for a recipe.
+
+1. `gleanyard add <recipe> [--id <id>]`. It writes the source disabled with its rights
+   pending, plus its mapping, fixture, snapshot and the recipe's evidence, and removes it all
+   again if the project does not validate or the fixture does not replay. Fix a field the
+   project's schema names differently in the source file, never in the schema.
+2. The recipe's evidence is someone else's reading. Read the pages it lists yourself and write
+   your own `evidence/<id>/<today>-terms.yaml`, as in the setup procedure.
+3. Run `gleanyard try <id>` and `gleanyard test -s <id>`. Fill `rights` from your reading;
+   leave `review_status: pending` and `enabled: false`. Keep the `recipe` key.
+4. Open a PR as in the setup procedure. The owner reviews, sets rights and enables.
+
+## Procedure: Share a source in the registry
+
+Trigger: the owner asks to share a working source. Only the owner decides this.
+
+1. The source must have a fixture with a snapshot and a terms review. Its tier must allow
+   sharing at all: never share an `internal_only`, `unknown` or `blocked` source.
+2. In a checkout of the registry repo, run `gleanyard registry pack <id> --project <path>`
+   with `--maintainer`, `--description` and `--fixture-basis` (why the fixture may be
+   public; trim it to what the replay needs and keep personal data out), then
+   `gleanyard registry check`. Open the PR in the registry repo.
 
 ## Procedure: Repair
 

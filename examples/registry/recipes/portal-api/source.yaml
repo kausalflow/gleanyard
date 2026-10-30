@@ -1,0 +1,23 @@
+id: portal-api
+schema: dataset
+enabled: false
+delivery: json
+url: https://data.example/api/datasets
+reader:
+  items_path: result.results
+extract:
+  mode: fields
+  map:
+    title: title
+    publisher: organization.name
+    landing_page: landing_url
+    license: license_title
+    modified: metadata_modified
+    formats: resources.*.format
+    size_bytes: resources.0.size
+    description: notes
+rights:
+  review_status: pending
+  effective_tier: facts_only
+  allowed_actions: {private_store: true, normalize: true, redistribute_facts: true}
+  public_fields: [title, publisher, license, modified, formats, landing_page]

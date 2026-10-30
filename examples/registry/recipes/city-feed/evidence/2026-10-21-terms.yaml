@@ -1,0 +1,7 @@
+source: city-feed
+read_at: 2026-10-21
+pages:
+  - url: https://example.org/terms
+    quote: Synthetic example; the site and its terms are made up for gleanyard's tests.
+reading: Facts only.
+suggested_tier: facts_only

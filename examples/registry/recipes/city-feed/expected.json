@@ -1,0 +1,18 @@
+{
+  "records": {
+    "rec_a1e914240a0e775df5fb": {
+      "landing_page": "https://city.example/data/schools",
+      "modified": "2026-08-17T09:15:00+02:00",
+      "publisher": "Synthetic City",
+      "title": "Synthetic school list"
+    },
+    "rec_ed8491fca230839596da": {
+      "description": "All street trees.",
+      "landing_page": "https://city.example/data/trees",
+      "modified": "2026-09-01T10:00:00+00:00",
+      "publisher": "Synthetic City",
+      "title": "Synthetic tree register"
+    }
+  },
+  "today": "2026-10-21"
+}

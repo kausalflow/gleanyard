@@ -27,6 +27,7 @@ nav = [
     { "AI assistants" = "concepts/agents.md" },
     { "Status hub" = "concepts/status-hub.md" },
     { "DataHerb catalog" = "concepts/dataherb.md" },
+    { "Source registry" = "concepts/registry.md" },
   ] },
   { "Reference" = [
     { "Schema file" = "reference/schema.md" },

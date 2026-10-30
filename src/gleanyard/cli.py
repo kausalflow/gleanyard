@@ -23,10 +23,16 @@ from gleanyard.hub.dashboard import render_dashboard, render_summary
 from gleanyard.hub.github import HttpGitHub
 from gleanyard.hub.state import HubState, collect_state
 from gleanyard.hub.viewer import VIEWER_DIR, write_viewers
-from gleanyard.init import init_hub, init_project
+from gleanyard.init import init_hub, init_project, init_registry
 from gleanyard.mapping import draft_mapping
 from gleanyard.probe import probe as probe_url
 from gleanyard.project import load_project
+from gleanyard.registry.health import search_topic
+from gleanyard.registry.install import Registry, RegistryError, add_recipe
+from gleanyard.registry.install import search as search_index
+from gleanyard.registry.model import DEFAULT_REGISTRY
+from gleanyard.registry.pack import pack_source
+from gleanyard.registry.site import build_index, check_registry, write_site
 from gleanyard.repair import check_repair, plan_repair
 from gleanyard.replay import replay_project
 from gleanyard.research import MAX_CANDIDATES, check_research
@@ -49,6 +55,10 @@ research_app = typer.Typer(
     no_args_is_help=True, help="Automated research: whether proposed candidates may be a PR."
 )
 app.add_typer(research_app, name="research")
+registry_app = typer.Typer(
+    no_args_is_help=True, help="A source registry: check recipes, build its site, add one."
+)
+app.add_typer(registry_app, name="registry")
 
 JsonFlag = Annotated[bool, typer.Option("--json", help="Print machine-readable JSON.")]
 ProjectDir = Annotated[
@@ -565,6 +575,212 @@ def mcp_command(root: ProjectDir = Path(".")) -> None:
         typer.echo("the MCP server needs the extra: pip install 'gleanyard[mcp]'", err=True)
         raise typer.Exit(2) from error
     build_server(root).run("stdio")
+
+
+RegistryOption = Annotated[
+    str | None,
+    typer.Option(
+        "--registry",
+        help=f"Registry URL or folder; default: $GLEANYARD_REGISTRY or {DEFAULT_REGISTRY}",
+    ),
+]
+
+
+def _registry(location: str | None) -> Registry:
+    return Registry(location or os.environ.get("GLEANYARD_REGISTRY") or DEFAULT_REGISTRY)
+
+
+@app.command("search")
+def search_command(
+    query: Annotated[str, typer.Argument(help="Words to look for; empty lists every recipe.")] = "",
+    schema: Annotated[str | None, typer.Option(help="Only recipes for this schema.")] = None,
+    registry: RegistryOption = None,
+    as_json: JsonFlag = False,
+) -> None:
+    """Find recipes in the source registry, with their health across projects."""
+    try:
+        found = search_index(_registry(registry).index(), query, schema)
+    except RegistryError as error:
+        typer.echo(str(error), err=True)
+        raise typer.Exit(2) from error
+    if as_json:
+        typer.echo(json.dumps([entry.model_dump(mode="json", by_alias=True) for entry in found]))
+        return
+    for entry in found:
+        health = entry.health
+        users = f"{health.level} in {health.users}" if health.users else "unknown"
+        typer.echo(
+            f"{entry.id:32} {users:14} {entry.schema_name}  {entry.delivery}/{entry.mode}  "
+            f"{entry.name}"
+        )
+    if not found:
+        typer.echo("no recipes found")
+
+
+@app.command("add")
+def add_command(
+    recipe: Annotated[str, typer.Argument(help="Recipe id, from `gleanyard search`.")],
+    root: ProjectDir = Path("."),
+    source_id: Annotated[
+        str | None, typer.Option("--id", help="Source id in this project; default: the recipe id.")
+    ] = None,
+    registry: RegistryOption = None,
+    force: Annotated[
+        bool,
+        typer.Option("--force", help="Keep the files even if a check fails; allow a known host."),
+    ] = False,
+    as_json: JsonFlag = False,
+) -> None:
+    """Install a registry recipe as a disabled source with pending rights; exit 1 if it fails."""
+    chosen = _registry(registry)
+    try:
+        entry, files = chosen.recipe(recipe)
+    except RegistryError as error:
+        typer.echo(str(error), err=True)
+        raise typer.Exit(2) from error
+    result = add_recipe(
+        root,
+        entry,
+        files,
+        source_id=source_id,
+        registry=None if chosen.local else chosen.location,
+        force=force,
+    )
+    if as_json:
+        typer.echo(result.model_dump_json(indent=2))
+    else:
+        for path in result.written:
+            typer.echo(f"wrote {path}")
+        for note in result.notes:
+            typer.echo(f"note: {note}")
+        for problem in result.problems:
+            typer.echo(f"problem: {problem}", err=True)
+        if result.ok:
+            sid = result.source_id
+            typer.echo(
+                f"added {sid!r} (disabled, rights pending). Next: read evidence/{sid}/, set "
+                f"its rights, run `gleanyard try {sid}`, then set enabled: true."
+            )
+        elif result.written:
+            typer.echo("kept the files (--force); fix the problems above by hand")
+        else:
+            typer.echo("nothing was written")
+    if not result.ok:
+        raise typer.Exit(1)
+
+
+def _registry_check_or_exit(root: Path, as_json: bool):
+    result = check_registry(root)
+    if as_json:
+        typer.echo(json.dumps(result.summary(), indent=2))
+    else:
+        for problem in result.problems:
+            typer.echo(f"problem: {problem}")
+        for recipe in result.recipes:
+            typer.echo(f"{'ok  ' if not recipe.problems else 'FAIL'}  {recipe.id}")
+            for problem in recipe.problems:
+                typer.echo(f"      {problem}")
+        if not result.recipes and not result.problems:
+            typer.echo("no recipes yet")
+    return result
+
+
+@registry_app.command("check")
+def registry_check(root: ProjectDir = Path("."), as_json: JsonFlag = False) -> None:
+    """Validate every recipe and replay its fixture, offline; exit 1 on any problem."""
+    if not _registry_check_or_exit(root, as_json).ok:
+        raise typer.Exit(1)
+
+
+@registry_app.command("build")
+def registry_build(
+    root: ProjectDir = Path("."),
+    out: Annotated[Path, typer.Option(help="Output directory for the static site.")] = Path("site"),
+    health: Annotated[
+        bool,
+        typer.Option(
+            "--health/--no-health",
+            help="Read the status.json of projects that use the recipes (no scraping).",
+        ),
+    ] = True,
+) -> None:
+    """Check the registry, then write its site: index.json, the recipe files, index.html."""
+    check = _registry_check_or_exit(root, as_json=False)
+    if not check.ok:
+        typer.echo("not building: fix the problems above", err=True)
+        raise typer.Exit(1)
+    token = os.environ.get("GITHUB_TOKEN") or os.environ.get("GH_TOKEN")
+    index, problems = build_index(
+        check, health=health, search=lambda topic: search_topic(topic, token)
+    )
+    write_site(root, out, check, index)
+    for problem in problems:
+        typer.echo(f"note: {problem}")
+    typer.echo(
+        f"wrote {out / 'index.json'}: {len(index.recipes)} recipe(s), "
+        f"health from {index.reports_read} report(s)"
+    )
+
+
+@registry_app.command("pack")
+def registry_pack(
+    source: Annotated[str, typer.Argument(help="Source id in the project.")],
+    project: Annotated[
+        Path, typer.Option(help="The project repo the source comes from.", exists=True)
+    ],
+    maintainer: Annotated[
+        list[str], typer.Option("--maintainer", help="GitHub login to ask (repeatable).")
+    ],
+    description: Annotated[str, typer.Option(help="What the source publishes.")],
+    fixture_basis: Annotated[
+        str, typer.Option("--fixture-basis", help="Why the fixture page may be public.")
+    ],
+    tag: Annotated[list[str] | None, typer.Option("--tag", help="Tag (repeatable).")] = None,
+    root: ProjectDir = Path("."),
+    as_json: JsonFlag = False,
+) -> None:
+    """Copy a working source from a project into this registry as a recipe."""
+    result = pack_source(
+        project,
+        source,
+        root,
+        maintainers=maintainer,
+        description=description,
+        fixture_basis=fixture_basis,
+        tags=tag,
+    )
+    if as_json:
+        typer.echo(result.model_dump_json(indent=2))
+    else:
+        for path in result.written:
+            typer.echo(f"wrote {path}")
+        for problem in result.problems:
+            typer.echo(f"problem: {problem}", err=True)
+        if result.ok:
+            typer.echo(f"packed {source!r}; run `gleanyard registry check`, then open a PR")
+    if not result.ok:
+        raise typer.Exit(1)
+
+
+@registry_app.command("init")
+def registry_init(
+    directory: Annotated[Path, typer.Argument(help="New registry directory (empty or missing).")],
+    url: Annotated[
+        str | None, typer.Option(help="Where its Pages site will be, e.g. https://o.github.io/r/")
+    ] = None,
+    name: Annotated[
+        str | None, typer.Option(help="Registry name; default: the directory name.")
+    ] = None,
+) -> None:
+    """Create a source registry repo: registry.yaml, check and publish workflows, a README."""
+    registry = name or directory.resolve().name.lower().replace("_", "-")
+    try:
+        written = init_registry(directory, registry, url)
+    except ConfigError as error:
+        typer.echo(str(error), err=True)
+        raise typer.Exit(1) from error
+    typer.echo(f"created registry {registry!r} in {directory} ({len(written)} files)")
+    typer.echo("next: add a schema to schemas/, then `gleanyard registry pack` a source")
 
 
 def _hub_clients() -> tuple[HttpGitHub | None, HttpGitHub | None]:

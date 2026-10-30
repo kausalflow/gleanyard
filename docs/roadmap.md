@@ -66,6 +66,11 @@ access, in a repo of its own.
   from several sources into one exported row; the hub can show each project's export as a
   searchable table; and the opt-in `research` workflow proposes new candidates, checked by
   `gleanyard research check`.
+- Source registry (0.8.0): `gleanyard add` installs a known-good recipe from a public
+  registry, disabled and with its rights pending, and `gleanyard search` finds one. A
+  registry repo checks recipes by replaying fixtures offline (`gleanyard registry check`),
+  builds a static site for Pages (`registry build`), and shows each recipe's health from the
+  public `status.json` of the projects that use it, so it costs nothing to run.
 
 ## Decisions so far
 

@@ -1,0 +1,40 @@
+name: publish
+on:
+  push:
+    branches: [main]
+    paths:
+      - "recipes/**"
+      - "schemas/**"
+      - "registry.yaml"
+  schedule:
+    - cron: "37 4 * * *"
+  workflow_dispatch:
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+concurrency:
+  group: publish
+  cancel-in-progress: true
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install "gleanyard~=0.8.0"
+      - name: Build the site; health comes from projects' public status.json files
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: gleanyard registry build --out site
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+      - id: deploy
+        uses: actions/deploy-pages@v4

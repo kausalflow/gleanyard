@@ -52,6 +52,7 @@ argument).
 | `repair_check` | `gleanyard repair check --json` | yes |
 | `json_schema` | `gleanyard json-schema KIND` | no |
 | `search_records` | text search over `exports/records.jsonl` | no |
+| `search_registry` | `gleanyard search --json`, recipes in the [source registry](registry.md) | yes |
 
 Every tool only reads. The server never writes to the repo, never runs `collect` and never
 runs `map`: the agent edits files with its own tools, and you review the pull request.
@@ -60,5 +61,5 @@ runs `map`: the agent edits files with its own tools, and you review the pull re
 call, so the tools see the agent's edits.
 
 The procedures are also served as prompts (`research`, `set_up_source`, `repair`,
-`retire_source`) and the whole skill as the resource `gleanyard://skill`, so a client without
+`retire_source`, `add_from_registry`) and the whole skill as the resource `gleanyard://skill`, so a client without
 the skill file still follows the procedures of the installed version.

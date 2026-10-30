@@ -74,6 +74,10 @@ class SourceStatus(BaseModel):
     terms: TermsState | None = Field(
         default=None, description="Fingerprints of the terms pages, from `gleanyard terms`."
     )
+    recipe: str | None = Field(
+        default=None, description="The registry recipe the source was installed from, if any."
+    )
+    recipe_digest: str | None = None
 
 
 class ProjectStatus(BaseModel):
@@ -111,6 +115,7 @@ def build_status(
                 old.model_copy() if old else SourceStatus(id=source.id, enabled=True, health="ok")
             )
             entry.enabled = source.enabled
+            _set_recipe(entry, source)
             if not source.enabled:
                 entry.health = "disabled"
             elif old is None:
@@ -124,6 +129,11 @@ def build_status(
         healthy=all(entry.health in {"ok", "disabled"} for entry in entries),
         sources=entries,
     )
+
+
+def _set_recipe(entry: SourceStatus, source: SourceConfig) -> None:
+    entry.recipe = source.recipe.id if source.recipe else None
+    entry.recipe_digest = source.recipe.digest if source.recipe else None
 
 
 def _baseline(old: SourceStatus | None) -> int | None:
@@ -179,6 +189,7 @@ def _from_run(
         error_kind=run.error_kind,
         error=run.error,
     )
+    _set_recipe(status, source)
     if not run.ok:
         status.health = "failing"
         status.consecutive_failures = (old.consecutive_failures if old else 0) + 1
