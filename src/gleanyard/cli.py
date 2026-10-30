@@ -8,6 +8,7 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Annotated
 
+import click
 import typer
 
 from gleanyard import __version__
@@ -36,6 +37,14 @@ from gleanyard.registry.site import build_index, check_registry, write_site
 from gleanyard.repair import check_repair, plan_repair
 from gleanyard.replay import replay_project
 from gleanyard.research import MAX_CANDIDATES, check_research
+from gleanyard.review import (
+    OPEN_TIERS,
+    decide,
+    pending_groups,
+    suggest_rights,
+    write_decision,
+)
+from gleanyard.rights import AllowedActions, RightsTier
 from gleanyard.run import collect_source, export_project, record_store
 from gleanyard.scaffold import scaffold as scaffold_url
 from gleanyard.schema import ProjectSchema
@@ -59,6 +68,10 @@ registry_app = typer.Typer(
     no_args_is_help=True, help="A source registry: check recipes, build its site, add one."
 )
 app.add_typer(registry_app, name="registry")
+rights_app = typer.Typer(
+    no_args_is_help=True, help="Rights: the owner's decision on what a source may do."
+)
+app.add_typer(rights_app, name="rights")
 
 JsonFlag = Annotated[bool, typer.Option("--json", help="Print machine-readable JSON.")]
 ProjectDir = Annotated[
@@ -588,6 +601,134 @@ RegistryOption = Annotated[
 
 def _registry(location: str | None) -> Registry:
     return Registry(location or os.environ.get("GLEANYARD_REGISTRY") or DEFAULT_REGISTRY)
+
+
+@rights_app.command("review")
+def rights_review(
+    root: ProjectDir = Path("."),
+    sources: Annotated[
+        list[str] | None,
+        typer.Option("--source", "-s", help="Review this source even if decided (repeatable)."),
+    ] = None,
+) -> None:
+    """Ask the owner, source by source, for the rights of pending sources and write them."""
+    project = load_project(root)
+    if project.schema is None:
+        for issue in project.issues:
+            typer.echo(str(issue), err=True)
+        raise typer.Exit(1)
+    groups = pending_groups(project, sources)
+    if not groups:
+        typer.echo("no sources wait for a rights review")
+        return
+    today = datetime.now(UTC).date()
+    tiers = [tier.value for tier in RightsTier]
+    action_names = list(AllowedActions.model_fields)
+    written = 0
+    for number, group in enumerate(groups, 1):
+        ids = [source.id for source in group.sources]
+        typer.echo("")
+        typer.secho(f"[{number}/{len(groups)}] {', '.join(ids)}", bold=True)
+        for source in group.sources:
+            typer.echo(f"  {source.id}: {source.url}")
+        if group.evidence_path is None:
+            typer.echo(f"  no evidence/{group.folder}/<date>-terms.yaml: read the terms first")
+        else:
+            typer.echo(f"  evidence: {group.evidence_path}")
+            for url, quote in group.quotes:
+                typer.echo(f"  - {url}")
+                if quote:
+                    typer.echo(f'    "{_clip(quote)}"')
+            if group.reading:
+                typer.echo(f"  reading: {_clip(group.reading, 600)}")
+        current = group.sources[0].rights
+        default_tier = group.suggested_tier or current.effective_tier
+        tier = RightsTier(
+            typer.prompt(
+                f"Tier ({', '.join(tiers)})",
+                default=default_tier.value,
+                type=click.Choice(tiers),
+                show_choices=False,
+            )
+        )
+        rights = suggest_rights(tier, project.schema, current)
+        on = [name for name in action_names if getattr(rights.allowed_actions, name)]
+        typer.echo(f"  allowed actions: {', '.join(on) or 'none'}")
+        typer.echo(f"  public fields:   {', '.join(rights.public_fields) or 'none'}")
+        if not typer.confirm("Keep these?", default=True):
+            on = _names(
+                typer.prompt("Allowed actions (comma-separated)", default=", ".join(on)),
+                action_names,
+                "action",
+            )
+            fields = _names(
+                typer.prompt(
+                    "Public fields (comma-separated)",
+                    default=", ".join(rights.public_fields),
+                ),
+                list(project.schema.fields),
+                "field",
+            )
+            rights = rights.model_copy(
+                update={
+                    "allowed_actions": AllowedActions(
+                        **{name: name in on for name in action_names}
+                    ),
+                    "public_fields": fields,
+                }
+            )
+        if tier in OPEN_TIERS and tier != RightsTier.LICENSED:
+            rights = rights.model_copy(
+                update={
+                    "license_id": typer.prompt("Licence id", default=rights.license_id or "")
+                    or None,
+                    "license_url": typer.prompt("Licence URL", default=rights.license_url or "")
+                    or None,
+                }
+            )
+        if rights.attribution_required:
+            text = typer.prompt("Attribution text", default=rights.attribution_text or "")
+            rights = rights.model_copy(update={"attribution_text": text or None})
+        status = typer.prompt(
+            "Decision (approve, reject, skip)",
+            default="approve",
+            type=click.Choice(["approve", "reject", "skip"]),
+            show_choices=False,
+        )
+        if status == "skip":
+            continue
+        enabled = False
+        if status == "approve" and tier != RightsTier.BLOCKED:
+            label = "this source" if len(ids) == 1 else f"these {len(ids)} sources"
+            enabled = typer.confirm(f"Enable {label}?", default=True)
+        notes = typer.prompt("Notes", default=current.notes or "", show_default=False)
+        rights = decide(rights, "approved" if status == "approve" else "rejected", today, notes)
+        for source in group.sources:
+            path = root / "sources" / f"{source.id}.yaml"
+            write_decision(path, rights, enabled)
+            typer.echo(f"wrote {path.relative_to(root)}")
+            written += 1
+    typer.echo("")
+    checked = load_project(root)
+    for issue in checked.issues:
+        typer.echo(str(issue), err=True)
+    if not checked.ok:
+        raise typer.Exit(1)
+    typer.echo(f"ok: {written} source file(s) updated; `gleanyard validate` is clean")
+
+
+def _clip(text: str, limit: int = 300) -> str:
+    flat = " ".join(text.split())
+    return flat if len(flat) <= limit else flat[: limit - 1] + "…"
+
+
+def _names(answer: str, allowed: list[str], kind: str) -> list[str]:
+    names = [name.strip() for name in answer.split(",") if name.strip()]
+    unknown = [name for name in names if name not in allowed]
+    if unknown:
+        typer.echo(f"unknown {kind}(s): {', '.join(unknown)}; choose from {', '.join(allowed)}")
+        raise typer.Exit(2)
+    return names
 
 
 @app.command("search")

@@ -230,6 +230,24 @@ nothing), `try_source`, `test_fixtures`, `repair_plan`, `repair_check`, `json_sc
 `search_registry` (recipes in the source registry). The procedures are served as prompts and
 the skill as the resource `gleanyard://skill`. Needs the optional extra `pip install 'gleanyard[mcp]'`.
 
+## `gleanyard rights review [PROJECT] [-s ID]...`
+
+The owner's rights decision, asked interactively. It walks the sources whose
+`review_status` is `pending` (or the ones named with `-s`, even if decided), one evidence
+folder at a time, so sources that share a review are answered once. For each it shows the
+URLs, the latest `evidence/<folder>/<date>-terms.yaml` (page quotes, `reading`) and asks:
+
+- the tier, defaulting to the evidence file's `suggested_tier`;
+- whether to keep the `allowed_actions` and `public_fields` suggested for that tier and the
+  schema's field classes (every required field for `link_only`, every `fact` field for
+  `facts_only`, every field but `personal` ones for open and licensed tiers, none for
+  `internal_only`, `unknown` and `blocked`), or to type them;
+- the licence id and URL for open tiers, and the attribution text when one is required;
+- approve, reject or skip; whether to enable the sources (approved ones only); notes.
+
+Only the `rights:` block and the `enabled:` line of each source file are rewritten, with
+`reviewed_at` set to today. It ends with `validate` and exits 1 if the project does not pass.
+
 ## `gleanyard export [PROJECT] [--json]`
 
 Writes the rights-filtered public export, by default `exports/records.jsonl` (set `export`
