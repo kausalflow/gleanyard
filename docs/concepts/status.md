@@ -67,6 +67,9 @@ calendar: a feed that returns the same records for weeks is usually frozen, not 
 }
 ```
 
+`recipe` and `recipe_digest` appear on a source installed with `gleanyard add`: a [source
+registry](registry.md) reads them from public projects to count how each recipe fares.
+
 `terms`, written by `gleanyard terms`, holds the fingerprints of the source's terms pages and
 `robots.txt` as of its last review, and lists under `changed` the pages whose text differs
 since ([watching the terms](rights.md#watching-the-terms)). `gleanyard badge` draws README

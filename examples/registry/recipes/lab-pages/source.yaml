@@ -1,0 +1,14 @@
+id: lab-pages
+schema: dataset
+enabled: false
+delivery: html
+url: https://lab.example/data
+extract:
+  mode: jsonld
+  types: [Dataset]
+  map: {formats: distribution.*.encodingFormat}
+rights:
+  review_status: pending
+  effective_tier: facts_only
+  allowed_actions: {private_store: true, normalize: true, redistribute_facts: true}
+  public_fields: [title, publisher, license, modified, formats, landing_page]

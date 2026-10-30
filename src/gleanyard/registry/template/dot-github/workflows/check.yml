@@ -1,0 +1,25 @@
+name: check
+on:
+  pull_request:
+    paths:
+      - "recipes/**"
+      - "schemas/**"
+      - "registry.yaml"
+      - ".github/workflows/**"
+permissions:
+  contents: read
+concurrency:
+  group: check-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install "gleanyard~=0.8.0"
+      - name: Validate every recipe and replay its fixture (offline, no requests to any site)
+        run: gleanyard registry check

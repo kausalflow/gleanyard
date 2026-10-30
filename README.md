@@ -46,6 +46,8 @@ gleanyard export [PROJECT] [--json]     # rights-filtered public export
 gleanyard test [PROJECT] [--update]     # replay fixtures offline against their snapshots
 gleanyard terms [PROJECT]               # have a source's terms or robots.txt changed?
 gleanyard badge [PROJECT]               # README badges from status.json
+gleanyard search [QUERY]                # recipes in the public source registry
+gleanyard add RECIPE [PROJECT]          # install one, disabled and with rights pending
 ```
 
 `collect` fetches each enabled source with the bounded fetcher (same hosts only,

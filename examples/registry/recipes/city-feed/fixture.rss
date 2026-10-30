@@ -1,0 +1,7 @@
+<?xml version="1.0"?>
+<rss version="2.0"><channel><title>Synthetic City datasets</title>
+<item><title>Synthetic tree register</title><link>https://city.example/data/trees</link>
+<description>All street trees.</description><pubDate>Tue, 01 Sep 2026 10:00:00 GMT</pubDate></item>
+<item><title>Synthetic school list</title><link>https://city.example/data/schools</link>
+<pubDate>Mon, 17 Aug 2026 09:15:00 +0200</pubDate></item>
+</channel></rss>

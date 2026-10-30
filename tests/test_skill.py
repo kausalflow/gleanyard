@@ -21,6 +21,8 @@ def test_claude_md_imports_the_skill_and_the_skill_holds_the_procedures(tmp_path
         "repair",
         "review changed terms",
         "retire a source",
+        "add a source from the registry",
+        "share a source in the registry",
     }
     assert "gleanyard repair check" in procedures()["repair"]
     assert "Pull request checklist" not in procedures()["retire a source"]

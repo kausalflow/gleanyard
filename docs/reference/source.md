@@ -43,6 +43,7 @@ retention: {raw_days: 30}
 | `rights` | See [Rights and export](../concepts/rights.md). |
 | `evidence` | Optional. Folder under `evidence/` holding this source's terms review; default the source id. Sources sharing one site name the same folder. See [watching the terms](../concepts/rights.md#watching-the-terms). |
 | `retention` | `raw_days` (default 30) and `normalized_days` (default 730). |
+| `recipe` | Set by `gleanyard add`: the registry recipe's `id`, its `digest` and the `registry` it came from. `status.json` reports it, so the registry can count how the recipe fares. See [Source registry](../concepts/registry.md). |
 
 ## `reader` options
 

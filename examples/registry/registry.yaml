@@ -1,0 +1,7 @@
+# An example gleanyard source registry. See https://kausalflow.github.io/gleanyard/concepts/registry/
+schema_version: 1
+name: example-registry
+# Projects whose health counts for the recipes they installed: owner/name of a public repo,
+# or the URL of a status.json. Only counts are published, never project names.
+users: []
+fresh_days: 14             # older reports do not count
