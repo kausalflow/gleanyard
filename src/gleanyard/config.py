@@ -59,7 +59,10 @@ class CsvReader(StrictModel):
 
 
 class RssReader(StrictModel):
-    pass
+    include: str | None = Field(
+        default=None,
+        description="Regex an item's title or text must match; other items are skipped.",
+    )
 
 
 class HtmlReader(StrictModel):

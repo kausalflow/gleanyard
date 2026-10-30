@@ -58,7 +58,8 @@ retention: {raw_days: 30}
 | | `encoding` | `utf-8` |
 | `sitemap` | `include` (regular expression a URL must match) | all |
 | | `max_pages` | 50 |
-| `rss`, `html`, `pdf` | none | |
+| `rss` | `include` (regular expression the item's title or text must match; other items are skipped, not rejected) | all |
+| `html`, `pdf` | none | |
 
 ## `extract` options
 
