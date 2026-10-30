@@ -25,6 +25,7 @@ from gleanyard.config import (
     Delivery,
     IcalReader,
     JsonReader,
+    RssReader,
     SitemapReader,
     SourceConfig,
 )
@@ -101,17 +102,32 @@ def read_csv(source: SourceConfig, body: bytes, options: CsvReader) -> list[Item
 _ATOM = "{http://www.w3.org/2005/Atom}"
 
 
-def read_rss(source: SourceConfig, body: bytes) -> list[Item]:
+def read_rss(source: SourceConfig, body: bytes, options: RssReader | None = None) -> list[Item]:
     try:
         root = ET.fromstring(body)
     except ET.ParseError as error:
         raise StructureChanged(source.id, f"feed is not valid XML: {error}") from error
     if root.tag == "rss" or root.tag.endswith("RDF"):
         entries = root.iter("item") if root.tag == "rss" else root.iter("{*}item")
-        return [_rss_item(entry) for entry in entries]
-    if root.tag == f"{_ATOM}feed":
-        return [_atom_entry(entry) for entry in root.iter(f"{_ATOM}entry")]
-    raise StructureChanged(source.id, f"expected an RSS or Atom feed, found <{root.tag}>")
+        items = [_rss_item(entry) for entry in entries]
+    elif root.tag == f"{_ATOM}feed":
+        items = [_atom_entry(entry) for entry in root.iter(f"{_ATOM}entry")]
+    else:
+        raise StructureChanged(source.id, f"expected an RSS or Atom feed, found <{root.tag}>")
+    if options and options.include:
+        # A general feed (all of a police station's releases) narrowed to the topic: items that
+        # do not match are skipped, not rejected, so they never reach review or the raw records.
+        pattern = re.compile(options.include)
+        items = [
+            item
+            for item in items
+            if any(pattern.search(str(item.get(key) or "")) for key in _RSS_TEXT)
+        ]
+    return items
+
+
+# The item keys ``include`` looks at: the title and the text, as RSS and Atom name them.
+_RSS_TEXT = ("title", "description", "summary", "content", "encoded")
 
 
 def _local(tag: str) -> str:
@@ -292,7 +308,7 @@ def read_items(source: SourceConfig, body: bytes, today: date | None = None) -> 
     if source.delivery == Delivery.CSV:
         return read_csv(source, body, options)
     if source.delivery == Delivery.RSS:
-        return read_rss(source, body)
+        return read_rss(source, body, options)
     if source.delivery == Delivery.ICAL:
         return read_ical(source, body, options, today or date.today())
     raise ValueError(f"{source.delivery.value} is a document delivery, not a feed")

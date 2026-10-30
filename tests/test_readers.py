@@ -97,6 +97,23 @@ def test_atom_entries():
     ]
 
 
+def test_rss_include_keeps_matching_items():
+    body = """<rss version="2.0"><channel>
+<item><title>Einbruch in Wohnung</title><description>Unbekannte brachen ein.</description></item>
+<item><title>Großeinsatz am Samstag</title><description>Polizei bereit.</description></item>
+<item><title>Hinweis für Samstag</title><description>Eine Versammlung.</description></item>
+</channel></rss>""".encode()
+    items = read_items(source("rss", {"include": "(?i)versammlung|großeinsatz"}), body)
+    assert [item["title"] for item in items] == ["Großeinsatz am Samstag", "Hinweis für Samstag"]
+
+
+def test_atom_include_reads_summary():
+    body = b"""<feed xmlns="http://www.w3.org/2005/Atom">
+<entry><title>A</title><summary>road closed</summary></entry>
+<entry><title>B</title><summary>open</summary></entry></feed>"""
+    assert [i["title"] for i in read_items(source("rss", {"include": "closed"}), body)] == ["A"]
+
+
 def test_rss_wrong_root():
     with pytest.raises(StructureChanged, match="expected an RSS or Atom feed"):
         read_items(source("rss"), b"<html><body/></html>")
