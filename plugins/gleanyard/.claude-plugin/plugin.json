@@ -1,0 +1,12 @@
+{
+  "name": "gleanyard",
+  "version": "0.10.0",
+  "description": "Set up, test and repair recurring web sources in a gleanyard project, with the gleanyard skill and MCP server.",
+  "author": {
+    "name": "kausalflow"
+  },
+  "homepage": "https://kausalflow.github.io/gleanyard/concepts/agents/",
+  "repository": "https://github.com/kausalflow/gleanyard",
+  "license": "MIT",
+  "keywords": ["scraping", "data-collection", "mcp", "github"]
+}

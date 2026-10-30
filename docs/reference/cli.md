@@ -221,13 +221,16 @@ Writes the assistant's procedures for the installed version to
 `current`, `outdated` or `missing`, and exits 1 unless it is current. See
 [AI assistants](../concepts/agents.md).
 
-## `gleanyard mcp [PROJECT]`
+## `gleanyard mcp [PROJECT] [--allow-writes]`
 
 Runs an MCP server over stdio for the project, with read-only tools that return the same JSON
 as `--json`: `validate`, `status`, `check_url`, `probe`, `scaffold` (returns the draft, writes
 nothing), `try_source`, `test_fixtures`, `repair_plan`, `repair_check`, `json_schema`,
 `search_records` (the public export only), `recent_changes` (the public change feed) and
-`search_registry` (recipes in the source registry). The procedures are served as prompts and
+`search_registry` (recipes in the source registry), and `read_file` (config and review
+folders, never `data/`). `--allow-writes` adds `write_file`, `save_fixture`,
+`update_snapshot`, `add_recipe` and `collect` (enabled sources only); none of them changes a
+source's `enabled` or `rights.review_status`. The procedures are served as prompts and
 the skill as the resource `gleanyard://skill`. Needs the optional extra `pip install 'gleanyard[mcp]'`.
 
 ## `gleanyard rights review [PROJECT] [-s ID]...`

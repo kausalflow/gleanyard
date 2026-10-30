@@ -585,14 +585,24 @@ def skill(
 
 
 @app.command("mcp")
-def mcp_command(root: ProjectDir = Path(".")) -> None:
+def mcp_command(
+    root: ProjectDir = Path("."),
+    allow_writes: Annotated[
+        bool,
+        typer.Option(
+            "--allow-writes",
+            help="Also serve tools that write config, fixtures and snapshots, add recipes "
+            "and collect enabled sources. They never enable a source or approve rights.",
+        ),
+    ] = False,
+) -> None:
     """Serve the project's commands as MCP tools over stdio (needs gleanyard[mcp])."""
     try:
         from gleanyard.mcp_server import build_server
     except ImportError as error:
         typer.echo("the MCP server needs the extra: pip install 'gleanyard[mcp]'", err=True)
         raise typer.Exit(2) from error
-    build_server(root).run("stdio")
+    build_server(root, writes=allow_writes).run("stdio")
 
 
 RegistryOption = Annotated[
