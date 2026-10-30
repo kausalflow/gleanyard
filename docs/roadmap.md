@@ -71,6 +71,9 @@ access, in a repo of its own.
   registry repo checks recipes by replaying fixtures offline (`gleanyard registry check`),
   builds a static site for Pages (`registry build`), and shows each recipe's health from the
   public `status.json` of the projects that use it, so it costs nothing to run.
+- AI apps (0.9.0): a Claude Code plugin, installed from the gleanyard repo's own
+  marketplace, brings the skill and the MCP server; `gleanyard mcp --allow-writes` adds
+  write tools for clients without a shell, which never enable a source or approve rights.
 
 ## Decisions so far
 

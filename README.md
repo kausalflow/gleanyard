@@ -58,6 +58,17 @@ rejections under `data/`. `--from-cache` re-extracts the last run with no networ
 `public_fields` and its class is allowed (`fact`, `protected_text`, `image`), and
 `personal` fields are never exported.
 
+## With an AI assistant
+
+In Claude Code, install the gleanyard plugin. It brings the skill and the
+`gleanyard mcp` server (started with [uv](https://docs.astral.sh/uv/)):
+
+```text
+/plugin install gleanyard --marketplace kausalflow/gleanyard
+```
+
+See [AI assistants](https://kausalflow.github.io/gleanyard/concepts/agents/) for other clients.
+
 ## Releasing
 
 Publishing to PyPI is automatic through trusted publishing (no API token).

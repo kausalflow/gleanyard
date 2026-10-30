@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "gleanyard": {
+      "command": "uvx",
+      "args": ["--from", "gleanyard[mcp]>=0.9", "gleanyard", "mcp", "--allow-writes"]
+    }
+  }
+}

@@ -4,6 +4,28 @@ Gleanyard runs no agent. It gives the one you use two things: procedures that ma
 installed version, and the project's commands as tools. Both keep the same rule as the
 command line: a verdict comes from `try`, `validate` and `repair check`, not from the model.
 
+## The plugin
+
+The quickest way in for Claude Code is the gleanyard plugin. It comes from
+the marketplace in the gleanyard repo and brings a short skill and the MCP server below:
+
+```text
+/plugin install gleanyard --marketplace kausalflow/gleanyard
+```
+
+On older Claude Code versions, run `/plugin marketplace add kausalflow/gleanyard`, then
+`/plugin install gleanyard@gleanyard`.
+
+The server starts in the folder you work in, through `uvx`, so it needs
+[uv](https://docs.astral.sh/uv/) but no install of gleanyard. It runs with `--allow-writes`,
+and the client asks you before each write tool runs. The plugin's skill holds no procedures
+of its own: it sends the assistant to the project's `CLAUDE.md` and its versioned skill, so
+the procedures always match the gleanyard version the project pins. In a folder without a
+project, it offers `gleanyard init`.
+
+Nothing here runs on a server of ours. The plugin is a few files in the repo, the server runs
+on your computer, and pages are fetched from there.
+
 ## The gleanyard skill
 
 The procedures for research, setting up a source, repair and retirement live in one file that
@@ -38,7 +60,18 @@ claude mcp add gleanyard -- gleanyard mcp     # Claude Code, from the project fo
 ```
 
 Other clients start the command `gleanyard mcp` (optionally with the project folder as its
-argument).
+argument). Claude Desktop, for example, takes this in its `claude_desktop_config.json`:
+
+```json
+{
+  "mcpServers": {
+    "gleanyard": {
+      "command": "uvx",
+      "args": ["--from", "gleanyard[mcp]", "gleanyard", "mcp", "/path/to/project", "--allow-writes"]
+    }
+  }
+}
+```
 
 | Tool | Same as | Network |
 | --- | --- | --- |
@@ -53,12 +86,35 @@ argument).
 | `json_schema` | `gleanyard json-schema KIND` | no |
 | `search_records` | text search over `exports/records.jsonl` | no |
 | `search_registry` | `gleanyard search --json`, recipes in the [source registry](registry.md) | yes |
+| `read_file` | reads `schema.yaml`, `gleanyard.yaml`, `research.md`, `CLAUDE.md` and the review folders | no |
 
-Every tool only reads. The server never writes to the repo, never runs `collect` and never
-runs `map`: the agent edits files with its own tools, and you review the pull request.
-`search_records` reads the rights-filtered public export, never the stored records in
+By default every tool only reads. The server never writes to the repo and never runs `map`:
+an agent with a shell edits files with its own tools, and you review the pull request.
+`read_file` cannot read `data/`. `search_records` reads the rights-filtered public export, never the stored records in
 `data/`, so an assistant sees only fields you may publish. The config is re-read on every
 call, so the tools see the agent's edits.
+
+### Write tools
+
+A client with no shell or file tools of its own, such as Claude Desktop, can still
+follow the whole set-up and repair procedure when the server runs with `--allow-writes`:
+
+| Tool | Same as | Network |
+| --- | --- | --- |
+| `write_file` | editing a file under `sources/`, `mappings/`, `candidates/`, `evidence/` or `tests/fixtures/`, then `validate` | no |
+| `save_fixture` | `gleanyard try ID --save-pages`, keeping the first page as `tests/fixtures/<id>.<ext>` | yes |
+| `update_snapshot` | `gleanyard test -s ID --update [--today DATE]` | no |
+| `add_recipe` | `gleanyard add RECIPE [--id ID]` | yes |
+| `collect` | `gleanyard collect -s ID`, for an enabled source only | yes |
+
+What stays with you:
+
+- `write_file` refuses a source file that changes `enabled` or `rights.review_status`, and a
+  new source must be disabled and pending. The assistant may fill the rest of `rights` from
+  the terms it read, as the procedures say.
+- Nothing writes `data/`, `exports/` or `status.json` except `collect`, and `collect`
+  refuses a disabled source, so nothing is stored before you have reviewed the rights.
+- The tools change files in the folder; nothing commits, pushes or opens a pull request.
 
 The procedures are also served as prompts (`research`, `set_up_source`, `repair`,
 `retire_source`, `add_from_registry`) and the whole skill as the resource `gleanyard://skill`, so a client without
