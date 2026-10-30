@@ -24,6 +24,8 @@ rights:
 ```
 
 Everything defaults to the safe answer: unknown tier, nothing allowed, nothing public.
+`gleanyard rights review` asks the owner for these values source by source, with suggestions
+from the evidence and the tier, and writes them; see the [command line](../reference/cli.md).
 
 ## Tiers
 

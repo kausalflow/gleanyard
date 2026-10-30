@@ -33,6 +33,7 @@ gleanyard repair check                     # may the uncommitted edit become a r
 gleanyard research check                   # may the new candidates become a research PR?
 gleanyard search [QUERY]                   # recipes in the public source registry
 gleanyard add RECIPE [--id ID]             # install one: disabled, rights pending
+gleanyard rights review                    # the owner's rights decision (interactive)
 gleanyard json-schema source               # exact shape of a source file
 gleanyard skill                            # refresh this file after upgrading gleanyard
 ```
@@ -86,7 +87,9 @@ Trigger: a candidate the owner marked ready.
    event calendars, so a frozen feed is noticed.
 6. Fill `rights` from the terms you read; leave `review_status: pending` and `enabled: false`.
 7. Open a PR whose description is the output of `gleanyard try <id> --markdown`, plus the
-   evidence file and your reading of the terms. The owner reviews, sets rights and enables.
+   evidence file and your reading of the terms. The owner reviews, then sets rights and
+   enables with `gleanyard rights review`, which shows the evidence file's `reading` and
+   `suggested_tier`: write both there.
 
 ## Procedure: Add a source from the registry
 
