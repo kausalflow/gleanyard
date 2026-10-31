@@ -95,6 +95,8 @@ class Fetcher:
         self._check_robots(url)
         validators = self._validators.get(url)
         headers = {"User-Agent": self.user_agent}
+        if self.limits.accept:
+            headers["Accept"] = self.limits.accept
         if validators is not None:
             if validators.etag:
                 headers["If-None-Match"] = validators.etag

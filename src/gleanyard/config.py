@@ -51,11 +51,24 @@ class IcalReader(StrictModel):
 
 class JsonReader(StrictModel):
     items_path: str = Field(default="", description="Dot path to the list of records.")
+    unpivot: Unpivot | None = None
+
+
+class Unpivot(StrictModel):
+    """Turn a wide row (one column per measure) into one item per listed column."""
+
+    keep: list[str] = Field(default_factory=list, description="Keys copied into every item.")
+    columns: dict[str, str] = Field(
+        min_length=1, description="Source column to the label it becomes under `name`."
+    )
+    name: str = Field(default="name", description="Key that holds the column's label.")
+    value: str = Field(default="value", description="Key that holds the column's value.")
 
 
 class CsvReader(StrictModel):
     delimiter: str = Field(default=",", min_length=1, max_length=1)
     encoding: str = "utf-8"
+    unpivot: Unpivot | None = None
 
 
 class RssReader(StrictModel):
@@ -94,6 +107,14 @@ class FetchLimits(StrictModel):
     max_response_bytes: int = Field(default=5 * 1024 * 1024, ge=1024, le=50 * 1024 * 1024)
     delay_seconds: float = Field(default=1.0, ge=0)
     timeout_seconds: float = Field(default=30, gt=0, le=300)
+    accept: str | None = Field(
+        default=None,
+        pattern=r"^[\w.+*/-]+(;\s*[\w.+-]+=[\w.+-]+)*(,\s*[\w.+*/-]+(;\s*[\w.+-]+=[\w.+-]+)*)*$",
+        description=(
+            "Accept header, for APIs that choose the format by content negotiation "
+            "(application/vnd.sdmx.data+csv;version=1.0.0)."
+        ),
+    )
 
 
 class SourceFilter(StrictModel):
@@ -148,9 +169,46 @@ class _ExtractBase(StrictModel):
     )
 
 
+class Case(StrictModel):
+    when: dict[str, str | list[str]] = Field(
+        min_length=1,
+        description="Source key or dot path to the value (or one of the values) it must have.",
+    )
+    set: dict[str, Any] = Field(min_length=1, description="Schema field to constant value.")
+
+
+class Rewrite(StrictModel):
+    pattern: str = Field(description="Regular expression searched in the mapped text value.")
+    replace: str = Field(description=r"Replacement; \1 names the first group.")
+
+    @field_validator("pattern")
+    @classmethod
+    def check_pattern(cls, value: str) -> str:
+        try:
+            re.compile(value)
+        except re.error as error:
+            raise ValueError(f"invalid pattern {value!r}: {error}") from error
+        return value
+
+
 class FieldsExtract(_ExtractBase):
     mode: Literal["fields"]
     map: dict[str, str] = Field(description="Schema field to source key or dot path.")
+    cases: list[Case] = Field(
+        default_factory=list,
+        description=(
+            "Constant values chosen by what an item holds, such as an indicator id by its code. "
+            "The first case that matches sets its fields; with cases, an item none matches is "
+            "skipped."
+        ),
+    )
+    rewrite: dict[str, Rewrite] = Field(
+        default_factory=dict,
+        description=(
+            "Schema field to a regex substitution applied to its mapped text, such as "
+            "2026-M08 to 2026-08."
+        ),
+    )
 
 
 class JsonLdExtract(_ExtractBase):

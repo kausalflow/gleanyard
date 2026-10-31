@@ -143,6 +143,16 @@ def _cross_check(
                 issue(["extract", "map", key], _unknown_field(key, schema))
         mapped |= set(extract.map)
     if isinstance(extract, FieldsExtract):
+        for index, case in enumerate(extract.cases):
+            for key in case.set:
+                if key not in schema.fields:
+                    issue(["extract", "cases", index, "set", key], _unknown_field(key, schema))
+        for key in extract.rewrite:
+            if key not in schema.fields:
+                issue(["extract", "rewrite", key], _unknown_field(key, schema))
+        if extract.cases:
+            # A field counts as mapped when every case sets it, since one of them always applies.
+            mapped |= set.intersection(*(set(case.set) for case in extract.cases))
         missing = [name for name in schema.required_fields if name not in mapped]
         if missing:
             issue(

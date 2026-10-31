@@ -85,7 +85,8 @@ def mapped_values(
     mode = source.extract
     if isinstance(mode, FieldsExtract):
         items = explode_items(read_items(source, response.body, today=today), mode.explode)
-        return [map_item(item, mode) for item in items]
+        mapped = (map_item(item, mode) for item in items)
+        return [values for values in mapped if values is not None]
     if isinstance(mode, JsonLdExtract):
         nodes = jsonld_nodes(source.id, response.body, mode.types)
         return [map_node(node, schema, mode.map, mode.defaults) for node in nodes]
