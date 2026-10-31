@@ -22,7 +22,7 @@ from gleanyard.config import (
 )
 from gleanyard.errors import ModelError
 from gleanyard.extract.explode import explode_items
-from gleanyard.extract.fields import map_item
+from gleanyard.extract.fields import Tables, map_item
 from gleanyard.extract.jsonld import jsonld_nodes, map_node
 from gleanyard.extract.llm import LlmSession
 from gleanyard.extract.selectors import SelectorSchema, run_selectors
@@ -80,12 +80,13 @@ def mapped_values(
     today: date | None,
     selectors: SelectorSchema | None,
     llm: LlmSession | None = None,
+    tables: Tables | None = None,
 ) -> list[dict[str, Any]]:
     """Run the source's pinned mode over one response; one dict per candidate record."""
     mode = source.extract
     if isinstance(mode, FieldsExtract):
         items = explode_items(read_items(source, response.body, today=today), mode.explode)
-        mapped = (map_item(item, mode) for item in items)
+        mapped = (map_item(item, mode, tables) for item in items)
         return [values for values in mapped if values is not None]
     if isinstance(mode, JsonLdExtract):
         nodes = jsonld_nodes(source.id, response.body, mode.types)
@@ -115,12 +116,13 @@ def extract(
     selectors: SelectorSchema | None = None,
     llm: LlmSession | None = None,
     base_url: str | None = None,
+    tables: Tables | None = None,
 ) -> Extraction:
     """Extract one response with the source's pinned mode."""
     result = Extraction()
     base_url = base_url or str(source.homepage or source.url)
     seen: set[str] = set()
-    for values in mapped_values(source, schema, response, today, selectors, llm):
+    for values in mapped_values(source, schema, response, today, selectors, llm, tables):
         validation = schema.validate_record(
             values, source_id=source.id, base_url=base_url, today=today
         )

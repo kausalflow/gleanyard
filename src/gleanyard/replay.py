@@ -23,6 +23,7 @@ from pydantic import BaseModel, Field
 from gleanyard.collect import Extraction, extract
 from gleanyard.config import Delivery, LlmExtract, SourceConfig
 from gleanyard.errors import SourceError
+from gleanyard.extract.fields import join_tables
 from gleanyard.fetch import Response
 from gleanyard.project import Project
 from gleanyard.run import apply_filter, selector_schema
@@ -244,6 +245,7 @@ def _extract_fixture(
         today=today,
         selectors=selector_schema(project, source),
         base_url=response.url if source.delivery == Delivery.SITEMAP else None,
+        tables=join_tables(project.root, source.extract),
     )
     apply_filter(source, extraction)
     return extraction

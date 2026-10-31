@@ -1,7 +1,7 @@
 import yaml
 
 from gleanyard.config import FieldsExtract
-from gleanyard.extract.fields import map_item
+from gleanyard.extract.fields import join_tables, map_item
 from gleanyard.project import load_project
 
 EXTRACT = FieldsExtract.model_validate(
@@ -80,3 +80,65 @@ def test_cases_and_rewrite_fields_are_checked(tmp_path):
     (tmp_path / "sources" / "s.yaml").write_text(yaml.safe_dump(source))
     messages = " ".join(issue.message for issue in load_project(tmp_path).issues)
     assert "nope" in messages and "other" in messages and "indicator" in messages
+
+
+def test_where_skips_items_whose_text_does_not_match():
+    extract = FieldsExtract.model_validate(
+        {"mode": "fields", "map": {"country_code": "COUNTRY"}, "where": {"COUNTRY": "[A-Z]{3}"}}
+    )
+    assert map_item({"COUNTRY": "DEU"}, extract) == {"country_code": "DEU"}
+    assert map_item({"COUNTRY": "G001"}, extract) is None  # the whole text must match
+    assert map_item({}, extract) is None
+
+
+def test_map_takes_the_first_path_with_a_value():
+    extract = FieldsExtract.model_validate(
+        {"mode": "fields", "map": {"country": ["name", "COUNTRY"]}}
+    )
+    assert map_item({"name": "Germany", "COUNTRY": "DEU"}, extract) == {"country": "Germany"}
+    assert map_item({"name": "", "COUNTRY": "ECB"}, extract) == {"country": "ECB"}
+
+
+def test_join_adds_a_lookup_files_columns(tmp_path):
+    (tmp_path / "geo.csv").write_text("geo,country_code,country\nEL,GRC,Greece\nDE,DEU,\n")
+    extract = FieldsExtract.model_validate(
+        {
+            "mode": "fields",
+            "map": {"country_code": "country_code", "country": ["country", "geo"]},
+            "join": [{"file": "geo.csv", "on": "geo", "unknown": "drop"}],
+        }
+    )
+    tables = join_tables(tmp_path, extract)
+    assert map_item({"geo": "EL"}, extract, tables) == {"country_code": "GRC", "country": "Greece"}
+    # An empty cell adds nothing, so the next path in the list is used.
+    assert map_item({"geo": "DE"}, extract, tables) == {"country_code": "DEU", "country": "DE"}
+    assert map_item({"geo": "XK"}, extract, tables) is None
+    keep = extract.model_copy(
+        update={"join": [extract.join[0].model_copy(update={"unknown": "keep"})]}
+    )
+    assert map_item({"geo": "XK", "country_code": "XKX"}, keep, tables)["country_code"] == "XKX"
+
+
+def test_join_files_are_checked(tmp_path):
+    (tmp_path / "sources").mkdir()
+    schema = {"name": "obs", "identity": ["code"], "fields": {"code": {"required": True}}}
+    (tmp_path / "schema.yaml").write_text(yaml.safe_dump(schema))
+    source = {
+        "id": "s",
+        "schema": "obs",
+        "delivery": "csv",
+        "url": "https://x.example/a.csv",
+        "extract": {
+            "mode": "fields",
+            "map": {"code": "code"},
+            "join": [{"file": "lookups/names.csv", "on": "code"}],
+        },
+        "rights": {},
+    }
+    (tmp_path / "sources" / "s.yaml").write_text(yaml.safe_dump(source))
+    assert "not found" in load_project(tmp_path).issues[0].message
+    (tmp_path / "lookups").mkdir()
+    (tmp_path / "lookups" / "names.csv").write_text("id,name\nA,a\n")
+    assert "no column 'code'" in load_project(tmp_path).issues[0].message
+    (tmp_path / "lookups" / "names.csv").write_text("code,name\nA,a\n")
+    assert load_project(tmp_path).ok

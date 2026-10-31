@@ -36,6 +36,7 @@ from gleanyard.collect import Extraction, OutputRecord, Rejection, extract
 from gleanyard.config import Delivery, LlmExtract, Pagination, SelectorsExtract, SourceConfig
 from gleanyard.errors import FilterIgnored, PaginationChanged, SourceError, StructureChanged
 from gleanyard.export import csv_text, public_record
+from gleanyard.extract.fields import join_tables
 from gleanyard.extract.llm import LlmSession, ModelClient, PydanticAiClient
 from gleanyard.extract.selectors import SelectorSchema
 from gleanyard.fetch import Fetcher, Response
@@ -322,6 +323,7 @@ def extract_pages(
     """Extract every page; a sitemap's first response is the index, not a page."""
     assert project.schema is not None
     pages = responses[1:] if source.delivery == Delivery.SITEMAP else responses
+    tables = join_tables(project.root, source.extract)
     merged = Extraction()
     seen: set[str] = set()
     for page in pages:
@@ -333,6 +335,7 @@ def extract_pages(
             selectors=selectors,
             llm=llm,
             base_url=page.url if source.delivery == Delivery.SITEMAP else None,
+            tables=tables,
         )
         for record in result.records:
             if record.id not in seen:
@@ -365,13 +368,20 @@ def export_project(project: Project, today: date | None = None) -> tuple[Path, i
     path = project.root / config.export
     _write_export(path, rows, config.export_partition, _jsonl_text)
     if config.export_csv:
+        # CSV is compact enough to keep one whole file for spreadsheets; with a partition,
+        # the parts are written next to it as well.
         schema = project.schema
-        _write_export(
-            project.root / config.export_csv,
-            rows,
-            config.export_partition,
-            lambda part: csv_text(part, schema),
-        )
+        csv_path = project.root / config.export_csv
+        csv_path.parent.mkdir(parents=True, exist_ok=True)
+        csv_path.write_text(csv_text(rows, schema), encoding="utf-8")
+        if config.export_partition:
+            _write_export(
+                csv_path,
+                rows,
+                config.export_partition,
+                lambda part: csv_text(part, schema),
+                folder=csv_parts_dir(project),
+            )
     if project.config.changes_feed:
         write_change_feed(project, today or date.today())
     return export_location(project, config.export), len(rows)
@@ -391,6 +401,16 @@ def export_files(project: Project, configured: str) -> list[Path]:
     return sorted(partition_dir(path).glob(f"*{path.suffix}"))
 
 
+def csv_parts_dir(project: Project) -> Path | None:
+    """The folder of the CSV parts, when the export is partitioned and written as CSV."""
+    config = project.config
+    if not (config.export_csv and config.export_partition):
+        return None
+    if config.export_csv_parts:
+        return project.root / config.export_csv_parts
+    return partition_dir(project.root / config.export_csv)
+
+
 def partition_dir(path: Path) -> Path:
     """The folder of a partitioned export: exports/records.jsonl -> exports/records."""
     return path.with_suffix("")
@@ -401,7 +421,7 @@ def partition_name(value: Any) -> str:
     if value in (None, "", []):
         return "_none"
     text = value if isinstance(value, str) else json.dumps(value, ensure_ascii=False)
-    return re.sub(r"[^a-z0-9]+", "-", text.casefold()).strip("-") or "_other"
+    return re.sub(r"[^a-z0-9_]+", "-", text.casefold()).strip("-") or "_other"
 
 
 def _write_export(
@@ -409,6 +429,7 @@ def _write_export(
     rows: list[dict[str, Any]],
     partition: str | None,
     render: Callable[[list[dict[str, Any]]], str],
+    folder: Path | None = None,
 ) -> None:
     if partition is None:
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -417,7 +438,7 @@ def _write_export(
     parts: dict[str, list[dict[str, Any]]] = {}
     for row in rows:
         parts.setdefault(partition_name(row.get(partition)), []).append(row)
-    folder = partition_dir(path)
+    folder = folder or partition_dir(path)
     folder.mkdir(parents=True, exist_ok=True)
     for stale in folder.glob(f"*{path.suffix}"):
         if stale.stem not in parts:

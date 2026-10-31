@@ -73,7 +73,7 @@ each item: every element becomes its own candidate record (see
 
 | Mode | Keys |
 | --- | --- |
-| `fields` | `map`: schema field to source key or dot path; optional `cases` (constant fields chosen by an item's values) and `rewrite` (a regex substitution per field); see [values chosen by what an item holds](../concepts/delivery-and-extraction.md#values-chosen-by-what-an-item-holds) |
+| `fields` | `map`: schema field to source key or dot path; a list of keys takes the first with a value; optional `cases` (constant fields chosen by an item's values), `rewrite` (a regex substitution per field), `where` (keep items whose value matches a regex) and `join` (lookup tables from CSV files in the repo); see [values chosen by what an item holds](../concepts/delivery-and-extraction.md#values-chosen-by-what-an-item-holds) |
 | `jsonld` | `types`: schema.org types to read; optional `map` |
 | `selectors` | `selectors`: path to a crawl4ai JSON CSS schema, relative to the project |
 | `llm` | `llm.model`, `llm.max_pages_per_run`, `llm.max_cost_per_run_eur`, `llm.only_if_changed`, `llm.input_price_per_mtok_eur`, `llm.output_price_per_mtok_eur`, `llm.max_input_chars`; optional `instructions` |

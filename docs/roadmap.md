@@ -89,6 +89,11 @@ access, in a repo of its own.
   `keep_removed` keeps history a source no longer publishes, `storage.records: compact`
   shrinks stored records, and `export_partition` splits the export into files per value.
 
+- Lookup tables (0.13.0): `join` adds columns from a CSV file in the repo (country names by
+  code), `where` leaves out items by a regex, a `map` entry can list fallback keys, and the
+  partitioned CSV is also written whole, with its parts in `export_csv_parts`. Found while
+  matching the old economic indicators data exactly.
+
 ## Decisions so far
 
 - Recurring sources are the focus; one-off research is possible through `llm` mode but not

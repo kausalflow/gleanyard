@@ -191,9 +191,45 @@ class Rewrite(StrictModel):
         return value
 
 
+class Join(StrictModel):
+    file: str = Field(
+        description=(
+            "CSV file in the repo, relative to its root, with a header row. One column is the "
+            "key; the others are added to each item whose key matches."
+        )
+    )
+    on: str = Field(description="Item key or dot path whose value is looked up in the file.")
+    column: str | None = Field(
+        default=None, description="The file's key column; default: the same name as `on`."
+    )
+    unknown: Literal["keep", "drop"] = Field(
+        default="keep",
+        description="keep: an item whose value is not in the file stays as it is; drop: skipped.",
+    )
+
+
 class FieldsExtract(_ExtractBase):
     mode: Literal["fields"]
-    map: dict[str, str] = Field(description="Schema field to source key or dot path.")
+    map: dict[str, str | list[str]] = Field(
+        description=(
+            "Schema field to source key or dot path; a list tries each in turn and takes the "
+            "first that has a value."
+        )
+    )
+    where: dict[str, str] = Field(
+        default_factory=dict,
+        description=(
+            "Source key or dot path to a regular expression its whole text must match; other "
+            "items are skipped. For example COUNTRY: '[A-Z]{3}' leaves out aggregates."
+        ),
+    )
+    join: list[Join] = Field(
+        default_factory=list,
+        description=(
+            "Lookup tables applied to each item before mapping, such as country names by code. "
+            "A joined column replaces an item key of the same name."
+        ),
+    )
     cases: list[Case] = Field(
         default_factory=list,
         description=(
@@ -209,6 +245,16 @@ class FieldsExtract(_ExtractBase):
             "2026-M08 to 2026-08."
         ),
     )
+
+    @field_validator("where")
+    @classmethod
+    def check_where(cls, value: dict[str, str]) -> dict[str, str]:
+        for path, pattern in value.items():
+            try:
+                re.compile(pattern)
+            except re.error as error:
+                raise ValueError(f"where {path}: invalid pattern {pattern!r}: {error}") from error
+        return value
 
 
 class JsonLdExtract(_ExtractBase):
@@ -419,7 +465,15 @@ class ProjectConfig(StrictModel):
         pattern=r"^[a-z][a-z0-9_]*$",
         description=(
             "Split the export by this schema field: one file per value in a folder named "
-            "after the export path (exports/records/<value>.jsonl), and likewise for CSV."
+            "after the export path (exports/records/<value>.jsonl). The CSV is written whole "
+            "and, in parts, to a folder named after it."
+        ),
+    )
+    export_csv_parts: str | None = Field(
+        default=None,
+        description=(
+            "With export_partition: the folder for the CSV parts; default: the CSV path "
+            "without its suffix (dataset/records.csv -> dataset/records/)."
         ),
     )
     changes_feed: str | None = Field(

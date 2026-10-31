@@ -267,7 +267,9 @@ of that field, in a folder named after the export path: `exports/records/<value>
 for CSV `dataset/records/<value>.csv`. A file name is the value in lower case with other
 characters as `-` (`_none` for rows without a value). Files for values that no longer
 occur are deleted. Use it when one file would be too large for git hosting (GitHub refuses
-files over 100 MB). `dataherb.json` lists the files of each part as one resource.
+files over 100 MB). `dataherb.json` lists the JSON lines parts as one resource. The CSV is
+compact enough to stay whole as well: `export_csv` gets every row, and the parts go to
+`export_csv_parts`, by default a folder named after the CSV.
 
 ## `gleanyard json-schema {source|schema|project}`
 
@@ -287,6 +289,7 @@ storage: {root: data, changes_days: 90, records: full}   # change logs older tha
 export: exports/records.jsonl
 export_csv: null                    # also write the export as CSV here, e.g. dataset/records.csv
 export_partition: null              # split the export into one file per value of this field
+export_csv_parts: null              # folder for the CSV parts, e.g. data/by_indicator
 changes_feed: exports/changes.json        # JSON Feed of recent changes; null turns it off
 status: status.json                 # health report, read by the status hub
 excluded_hosts: []                  # hosts `check` reports as excluded

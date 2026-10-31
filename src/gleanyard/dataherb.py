@@ -158,16 +158,16 @@ def _csv_resource(project: Project, rows: int) -> dict[str, Any]:
     ]
     resource: dict[str, Any] = {
         "name": "records-csv",
-        "path": _resource_path(project, project.config.export_csv),
+        "path": project.config.export_csv,
         "format": "csv",
         "mediatype": "text/csv",
         "encoding": "utf-8",
         "rows": rows,
         "schema": {"fields": fields, "primaryKey": "id"},
     }
-    files = export_files(project, project.config.export_csv)
-    if files:
-        resource["bytes"] = sum(file.stat().st_size for file in files)
+    path = project.root / project.config.export_csv
+    if path.is_file():
+        resource["bytes"] = path.stat().st_size
     return resource
 
 

@@ -44,6 +44,36 @@ Dot paths reach into nested JSON: `offers.0.price` is the price of the first off
 every element of a list: `resources.*.format` is the list of formats of all resources, for a
 field with `many: true`. `jsonld` mappings take the same paths.
 
+A list tries each key in turn and takes the first that has a value:
+`country: [country_name, COUNTRY]` falls back to the code when there is no name.
+
+### Leaving items out
+
+`where` keeps only the items whose value matches a regular expression in full; the others
+are skipped, not rejected:
+
+```yaml
+  where: {COUNTRY: '[A-Z]{3}'}     # countries only: G001 and other aggregates are skipped
+```
+
+### Lookup tables
+
+Codes often need a name or another code from a table the source does not send, such as
+country names for an API that only returns codes. `join` reads a CSV file in the repo with a
+header row and adds the columns of the row whose key matches the item's value:
+
+```yaml
+  join:
+    - {file: lookups/eurostat-geo.csv, on: geo, unknown: drop}   # columns geo, country_code, country
+  map: {country_code: country_code, country: country, year_month: TIME_PERIOD, value: OBS_VALUE}
+```
+
+`column` names the file's key column when it differs from `on`. With `unknown: keep`, the
+default, an item whose value is not in the file stays as it is; with `drop` it is skipped.
+A joined column replaces an item key of the same name, and an empty cell adds nothing.
+`validate` checks that the file exists and has the key column. Keep the file small and
+commit it: it is part of the source's configuration, and a change to it shows in review.
+
 ### Values chosen by what an item holds
 
 Statistics APIs often return several measures in one response and name each one by a code.

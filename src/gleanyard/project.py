@@ -7,6 +7,7 @@ on rather than a stack trace.
 
 from __future__ import annotations
 
+import csv
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, TypeVar
@@ -23,6 +24,7 @@ from gleanyard.config import (
     SelectorsExtract,
     SourceConfig,
 )
+from gleanyard.extract.fields import read_table
 from gleanyard.schema import FieldClass, ProjectSchema
 
 PROJECT_FILE = "gleanyard.yaml"
@@ -168,6 +170,15 @@ def _cross_check(
         for key in extract.rewrite:
             if key not in schema.fields:
                 issue(["extract", "rewrite", key], _unknown_field(key, schema))
+        for index, join in enumerate(extract.join):
+            table = root / join.file
+            if not table.is_file():
+                issue(["extract", "join", index, "file"], f"join file {join.file!r} not found")
+                continue
+            try:
+                read_table(table, join)
+            except (ValueError, UnicodeDecodeError, csv.Error) as error:
+                issue(["extract", "join", index, "file"], str(error))
         if extract.cases:
             # A field counts as mapped when every case sets it, since one of them always applies.
             mapped |= set.intersection(*(set(case.set) for case in extract.cases))

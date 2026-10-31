@@ -45,7 +45,7 @@ from gleanyard.review import (
     write_decision,
 )
 from gleanyard.rights import AllowedActions, RightsTier
-from gleanyard.run import collect_source, export_location, export_project, record_store
+from gleanyard.run import collect_source, csv_parts_dir, export_project, record_store
 from gleanyard.scaffold import scaffold as scaffold_url
 from gleanyard.schema import ProjectSchema
 from gleanyard.skill import skill_state, write_skill
@@ -194,13 +194,15 @@ def export(root: ProjectDir = Path("."), as_json: JsonFlag = False) -> None:
     project = _loaded(root)
     path, count = export_project(project)
     metadata = write_metadata(project, count)
-    csv_path = (
-        export_location(project, project.config.export_csv) if project.config.export_csv else None
-    )
+    config = project.config
+    csv_path = project.root / config.export_csv if config.export_csv else None
+    csv_parts = csv_parts_dir(project)
     if as_json:
         result = {"path": str(path), "records": count}
         if csv_path:
             result["csv"] = str(csv_path)
+        if csv_parts:
+            result["csv_parts"] = str(csv_parts)
         if metadata:
             result["dataherb"] = str(metadata)
         typer.echo(json.dumps(result))
@@ -208,6 +210,8 @@ def export(root: ProjectDir = Path("."), as_json: JsonFlag = False) -> None:
         typer.echo(f"wrote {count} records to {path}")
         if csv_path:
             typer.echo(f"wrote them as CSV to {csv_path}")
+        if csv_parts:
+            typer.echo(f"and one CSV per {config.export_partition} in {csv_parts}")
         if metadata:
             typer.echo(f"wrote DataHerb metadata to {metadata}")
 

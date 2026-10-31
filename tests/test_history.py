@@ -152,7 +152,9 @@ def test_partitioned_export_writes_one_file_per_value(root):
     package = json.loads((root / "dataherb.json").read_text())["datapackage"]
     paths = {resource["name"]: resource["path"] for resource in package["resources"]}
     assert paths["records"] == [f"exports/records/{file.name}" for file in files]
-    assert paths["records-csv"] == [f"dataset/events/{file.name}" for file in csvs]
+    assert paths["records-csv"] == "dataset/events.csv"  # the CSV is also written whole
+    whole = (root / "dataset" / "events.csv").read_text().splitlines()
+    assert len(whole) == count + 1
 
     stale = folder / "1999-01-01.jsonl"
     stale.write_text("{}\n")
