@@ -261,6 +261,14 @@ records, so run `collect` first.
 With `export_csv` set, it also writes the same rows as CSV: `id`, one column per schema field
 (personal fields never), then `_source`, `_source_url`, `_attribution` and `_license`. List
 values are joined with `; ` and objects such as money are written as JSON.
+`export_csv_columns` picks the columns and their order, for example the schema fields
+alone, which keeps a large CSV small. `export_sort` sorts the rows of every export by schema
+fields (default: source order); a sorted export also keeps a commit's diff readable.
+
+`export: null` leaves out the JSON lines export, for a project whose export is the CSV
+alone. The JSON lines rows carry when each page was retrieved, so for a large project that
+re-reads every source on each run, every row changes on every run, while the CSV rows only
+change with their values.
 
 With `export_partition` set to a schema field, the export is split into one file per value
 of that field, in a folder named after the export path: `exports/records/<value>.jsonl`, and
@@ -288,6 +296,8 @@ user_agent: "my-project (+https://example.org/contact)"
 storage: {root: data, changes_days: 90, records: full}   # change logs older than this are deleted
 export: exports/records.jsonl
 export_csv: null                    # also write the export as CSV here, e.g. dataset/records.csv
+export_csv_columns: null            # the CSV's columns, in order; default: all
+export_sort: []                     # sort the export by these schema fields
 export_partition: null              # split the export into one file per value of this field
 export_csv_parts: null              # folder for the CSV parts, e.g. data/by_indicator
 changes_feed: exports/changes.json        # JSON Feed of recent changes; null turns it off

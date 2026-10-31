@@ -365,38 +365,52 @@ def export_project(project: Project, today: date | None = None) -> tuple[Path, i
                 rows.append(row)
     rows = merge_rows(prefer_rows(rows, project.schema), project.schema)
     config = project.config
-    path = project.root / config.export
-    _write_export(path, rows, config.export_partition, _jsonl_text)
+    if config.export_sort:
+        rows.sort(key=lambda row: tuple(_sort_key(row.get(name)) for name in config.export_sort))
+    if config.export:
+        _write_export(project.root / config.export, rows, config.export_partition, _jsonl_text)
     if config.export_csv:
         # CSV is compact enough to keep one whole file for spreadsheets; with a partition,
         # the parts are written next to it as well.
-        schema = project.schema
+        schema, columns = project.schema, config.export_csv_columns
         csv_path = project.root / config.export_csv
         csv_path.parent.mkdir(parents=True, exist_ok=True)
-        csv_path.write_text(csv_text(rows, schema), encoding="utf-8")
+        csv_path.write_text(csv_text(rows, schema, columns), encoding="utf-8")
         if config.export_partition:
             _write_export(
                 csv_path,
                 rows,
                 config.export_partition,
-                lambda part: csv_text(part, schema),
+                lambda part: csv_text(part, schema, columns),
                 folder=csv_parts_dir(project),
             )
-    if project.config.changes_feed:
+    if config.changes_feed:
         write_change_feed(project, today or date.today())
-    return export_location(project, config.export), len(rows)
+    main = config.export or config.export_csv
+    assert main is not None  # validate requires one of them
+    return export_location(project, main), len(rows)
+
+
+def _sort_key(value: Any) -> tuple[int, Any]:
+    """Missing values last; numbers before text, so mixed columns still sort."""
+    if value in (None, "", []):
+        return (2, "")
+    if isinstance(value, bool | int | float):
+        return (0, value)
+    return (1, value if isinstance(value, str) else json.dumps(value, sort_keys=True))
 
 
 def export_location(project: Project, configured: str) -> Path:
-    """Where an export path's rows are: the file, or with ``export_partition`` its folder."""
+    """Where an export path's rows are: the file, or for partitioned JSON lines the folder."""
     path = project.root / configured
-    return partition_dir(path) if project.config.export_partition else path
+    partitioned = project.config.export_partition and configured == project.config.export
+    return partition_dir(path) if partitioned else path
 
 
 def export_files(project: Project, configured: str) -> list[Path]:
     """The files an export path's rows were written to, sorted."""
     path = project.root / configured
-    if project.config.export_partition is None:
+    if project.config.export_partition is None or configured != project.config.export:
         return [path] if path.is_file() else []
     return sorted(partition_dir(path).glob(f"*{path.suffix}"))
 

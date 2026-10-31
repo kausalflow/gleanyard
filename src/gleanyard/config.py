@@ -455,10 +455,31 @@ class ProjectConfig(StrictModel):
     user_agent: str = "gleanyard (+https://github.com/kausalflow/gleanyard)"
     storage: StorageConfig = Field(default_factory=StorageConfig)
     rights_policy: RightsPolicy = Field(default_factory=RightsPolicy)
-    export: str = Field(default="exports/records.jsonl", description="Public export path.")
+    export: str | None = Field(
+        default="exports/records.jsonl",
+        description=(
+            "Public export path (JSON lines). null leaves it out, for projects whose export "
+            "is the CSV alone."
+        ),
+    )
     export_csv: str | None = Field(
         default=None,
         description="Also write the public export as CSV to this path; off by default.",
+    )
+    export_csv_columns: list[str] | None = Field(
+        default=None,
+        min_length=1,
+        description=(
+            "The CSV's columns, in order: schema fields, id, and _source, _source_url, "
+            "_attribution, _license; default: all of them."
+        ),
+    )
+    export_sort: list[str] = Field(
+        default_factory=list,
+        description=(
+            "Schema fields to sort the export by, for example [indicator, country_code, "
+            "year_month]; default: source order."
+        ),
     )
     export_partition: str | None = Field(
         default=None,

@@ -24,6 +24,7 @@ from gleanyard.config import (
     SelectorsExtract,
     SourceConfig,
 )
+from gleanyard.export import csv_columns
 from gleanyard.extract.fields import read_table
 from gleanyard.schema import FieldClass, ProjectSchema
 
@@ -117,6 +118,30 @@ def load_project(root: Path) -> Project:
         if schema is not None:
             issues.extend(_cross_check(source, schema, path, root))
         sources.append(source)
+    if schema is not None:
+        for name in config.export_sort:
+            if name not in schema.fields:
+                issues.append(
+                    Issue(
+                        file=PROJECT_FILE,
+                        path="export_sort",
+                        message=f"export_sort names unknown field {name!r}",
+                    )
+                )
+        allowed = set(csv_columns(schema))
+        for name in config.export_csv_columns or []:
+            if name not in allowed:
+                issues.append(
+                    Issue(
+                        file=PROJECT_FILE,
+                        path="export_csv_columns",
+                        message=f"export_csv_columns names {name!r}, which the CSV does not have",
+                    )
+                )
+    if config.export is None and config.export_csv is None:
+        issues.append(
+            Issue(file=PROJECT_FILE, path="export", message="set export or export_csv, or both")
+        )
     partition = config.export_partition
     if schema is not None and partition is not None:
         if partition not in schema.fields:

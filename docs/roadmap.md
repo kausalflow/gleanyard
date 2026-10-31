@@ -91,8 +91,9 @@ access, in a repo of its own.
 
 - Lookup tables (0.13.0): `join` adds columns from a CSV file in the repo (country names by
   code), `where` leaves out items by a regex, a `map` entry can list fallback keys, and the
-  partitioned CSV is also written whole, with its parts in `export_csv_parts`. Found while
-  matching the old economic indicators data exactly.
+  partitioned CSV is also written whole, with its parts in `export_csv_parts`.
+  `export_csv_columns` and `export_sort` shape the CSV, and `export: null` makes it the only
+  export. Found while matching the old economic indicators data exactly.
 
 ## Decisions so far
 
