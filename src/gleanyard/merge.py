@@ -7,6 +7,11 @@ row holds only fields that some contributing source may publish, and each value 
 the first source, in source order, that exports that field. ``_source`` names that first
 source and ``_sources`` lists every contributing one with its own record id. A row that lacks
 a merge field is never merged.
+
+A schema may also name ``prefer.series`` fields, such as ``[indicator, country_code]``. When
+several sources export the same series, export keeps that whole series from the first of
+them in source order and drops the others' rows, so a series never mixes two sources. This
+runs before merging.
 """
 
 from __future__ import annotations
@@ -22,6 +27,24 @@ def merge_key(row: dict[str, Any], fields: list[str]) -> tuple[str, ...] | None:
     if any(row.get(name) in (None, "", []) for name in fields):
         return None
     return tuple(_fold(row[name]) for name in fields)
+
+
+def prefer_rows(rows: list[dict[str, Any]], schema: ProjectSchema) -> list[dict[str, Any]]:
+    """Keep each series from one source: the first, in row order, that exports it."""
+    if schema.prefer is None:
+        return rows
+    fields = schema.prefer.series
+    owner: dict[tuple[str, ...], str] = {}
+    kept = []
+    for row in rows:
+        key = merge_key(row, fields)
+        if key is None:
+            kept.append(row)
+            continue
+        source = row["_source"]["source_id"]
+        if owner.setdefault(key, source) == source:
+            kept.append(row)
+    return kept
 
 
 def merge_rows(rows: list[dict[str, Any]], schema: ProjectSchema) -> list[dict[str, Any]]:

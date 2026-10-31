@@ -262,6 +262,13 @@ With `export_csv` set, it also writes the same rows as CSV: `id`, one column per
 (personal fields never), then `_source`, `_source_url`, `_attribution` and `_license`. List
 values are joined with `; ` and objects such as money are written as JSON.
 
+With `export_partition` set to a schema field, the export is split into one file per value
+of that field, in a folder named after the export path: `exports/records/<value>.jsonl`, and
+for CSV `dataset/records/<value>.csv`. A file name is the value in lower case with other
+characters as `-` (`_none` for rows without a value). Files for values that no longer
+occur are deleted. Use it when one file would be too large for git hosting (GitHub refuses
+files over 100 MB). `dataherb.json` lists the files of each part as one resource.
+
 ## `gleanyard json-schema {source|schema|project}`
 
 Prints the JSON Schema for a config file, for editor completion and AI tools.
@@ -276,9 +283,10 @@ Optional, at the project root. All keys have defaults.
 schema: schema.yaml
 sources: sources
 user_agent: "my-project (+https://example.org/contact)"
-storage: {root: data, changes_days: 90}   # change logs older than this are deleted
+storage: {root: data, changes_days: 90, records: full}   # change logs older than this are deleted
 export: exports/records.jsonl
 export_csv: null                    # also write the export as CSV here, e.g. dataset/records.csv
+export_partition: null              # split the export into one file per value of this field
 changes_feed: exports/changes.json        # JSON Feed of recent changes; null turns it off
 status: status.json                 # health report, read by the status hub
 excluded_hosts: []                  # hosts `check` reports as excluded
@@ -288,3 +296,9 @@ rights_policy:
 ```
 
 Set `user_agent` to something that lets a site owner reach you.
+
+`storage.records: compact` stores each source's records in `data/records/<source>.jsonl`
+sorted by id, with each distinct provenance written once in the first line instead of on
+every record. Use it for sources with many thousands of records: the files are much smaller
+and a commit's diff holds only the records that changed. Both layouts read back the same, so
+you can switch at any time; the next collect rewrites the file.

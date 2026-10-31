@@ -27,7 +27,7 @@ from gleanyard.config import DataherbConfig
 from gleanyard.export import CSV_SOURCE_COLUMNS, csv_columns
 from gleanyard.project import Project
 from gleanyard.rights import export_blocker
-from gleanyard.run import SourceRun
+from gleanyard.run import SourceRun, export_files
 from gleanyard.schema import FieldClass, FieldSpec, FieldType
 from gleanyard.status import ProjectStatus
 
@@ -127,7 +127,7 @@ def build_metadata(project: Project, rows: int, size: int, today: date | None = 
         resources.append(
             {
                 "name": "records",
-                "path": project.config.export,
+                "path": _resource_path(project, project.config.export),
                 "format": "ndjson",
                 "mediatype": "application/x-ndjson",
                 "rows": rows,
@@ -144,7 +144,6 @@ def build_metadata(project: Project, rows: int, size: int, today: date | None = 
 def _csv_resource(project: Project, rows: int) -> dict[str, Any]:
     schema = project.schema
     assert schema is not None and project.config.export_csv is not None
-    path = project.root / project.config.export_csv
     fields = [{"name": "id", "type": "string", "description": "Stable record id."}]
     for name in csv_columns(schema)[1 : -len(CSV_SOURCE_COLUMNS)]:
         field = _field(name, schema.fields[name])
@@ -159,23 +158,32 @@ def _csv_resource(project: Project, rows: int) -> dict[str, Any]:
     ]
     resource: dict[str, Any] = {
         "name": "records-csv",
-        "path": project.config.export_csv,
+        "path": _resource_path(project, project.config.export_csv),
         "format": "csv",
         "mediatype": "text/csv",
         "encoding": "utf-8",
         "rows": rows,
         "schema": {"fields": fields, "primaryKey": "id"},
     }
-    if path.exists():
-        resource["bytes"] = path.stat().st_size
+    files = export_files(project, project.config.export_csv)
+    if files:
+        resource["bytes"] = sum(file.stat().st_size for file in files)
     return resource
 
 
-def write_metadata(project: Project, rows: int, export_path: Path) -> Path | None:
+def _resource_path(project: Project, configured: str) -> str | list[str]:
+    """A resource's path; a partitioned export is one resource in several files."""
+    if project.config.export_partition is None:
+        return configured
+    return [file.relative_to(project.root).as_posix() for file in export_files(project, configured)]
+
+
+def write_metadata(project: Project, rows: int) -> Path | None:
     config = project.config.dataherb
     if config is None or project.schema is None:
         return None
-    document = build_metadata(project, rows, export_path.stat().st_size)
+    size = sum(file.stat().st_size for file in export_files(project, project.config.export))
+    document = build_metadata(project, rows, size)
     path = project.root / config.metadata
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(document, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")

@@ -23,7 +23,7 @@ from gleanyard.config import (
     SelectorsExtract,
     SourceConfig,
 )
-from gleanyard.schema import ProjectSchema
+from gleanyard.schema import FieldClass, ProjectSchema
 
 PROJECT_FILE = "gleanyard.yaml"
 
@@ -115,6 +115,24 @@ def load_project(root: Path) -> Project:
         if schema is not None:
             issues.extend(_cross_check(source, schema, path, root))
         sources.append(source)
+    partition = config.export_partition
+    if schema is not None and partition is not None:
+        if partition not in schema.fields:
+            issues.append(
+                Issue(
+                    file=PROJECT_FILE,
+                    path="export_partition",
+                    message=f"export_partition names unknown field {partition!r}",
+                )
+            )
+        elif schema.fields[partition].field_class == FieldClass.PERSONAL:
+            issues.append(
+                Issue(
+                    file=PROJECT_FILE,
+                    path="export_partition",
+                    message=f"export_partition cannot use personal field {partition!r}",
+                )
+            )
     return Project(root=root, config=config, schema=schema, sources=sources, issues=issues)
 
 

@@ -43,7 +43,7 @@ from gleanyard.registry.install import search as search_index
 from gleanyard.registry.model import DEFAULT_REGISTRY
 from gleanyard.repair import check_repair, plan_repair
 from gleanyard.replay import FIXTURES, fixture_path, replay_project
-from gleanyard.run import collect_source
+from gleanyard.run import collect_source, export_files, export_location
 from gleanyard.scaffold import scaffold as scaffold_url
 from gleanyard.schema import ProjectSchema
 from gleanyard.skill import checklist, procedures, skill_text
@@ -254,12 +254,15 @@ def build_server(root: Path, *, writes: bool = False) -> MCPServer:
         """Search the public export (exports/, rights-filtered) by text, optionally for one
         source. Only exported fields are visible; stored records in data/ are not."""
         project = load_project(root)
-        path = root / project.config.export
-        if not path.is_file():
-            return {"export": str(path), "total": 0, "records": []}
+        path = export_location(project, project.config.export)
+        lines = [
+            line
+            for file in export_files(project, project.config.export)
+            for line in file.read_text(encoding="utf-8").splitlines()
+        ]
         needle = text.casefold()
         matches = []
-        for line in path.read_text(encoding="utf-8").splitlines():
+        for line in lines:
             if not line.strip():
                 continue
             if needle and needle not in line.casefold():

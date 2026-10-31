@@ -12,9 +12,11 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 from collections.abc import Callable
 from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
+from typing import Any
 from urllib.parse import parse_qsl, urlencode, urlsplit
 
 import httpx
@@ -37,9 +39,10 @@ from gleanyard.export import csv_text, public_record
 from gleanyard.extract.llm import LlmSession, ModelClient, PydanticAiClient
 from gleanyard.extract.selectors import SelectorSchema
 from gleanyard.fetch import Fetcher, Response
-from gleanyard.merge import merge_rows
+from gleanyard.merge import merge_rows, prefer_rows
 from gleanyard.project import Project
 from gleanyard.readers import read_sitemap
+from gleanyard.records import dump_records, parse_records
 from gleanyard.schema import FieldIssue
 from gleanyard.storage import LocalObjectStore
 
@@ -145,9 +148,15 @@ def collect_source(
     carry_first_seen(previous, result.records)
     if healthy:
         now = now or datetime.now(UTC)
-        append_changes(store, diff_records(source.id, previous, result.records, now))
+        stored = result.records
+        if source.keep_removed:
+            found = {record.id for record in result.records}
+            stored = result.records + [record for record in previous if record.id not in found]
+        append_changes(store, diff_records(source.id, previous, stored, now))
         prune_changes(store, project.config.storage.changes_days, now.date())
-        _write_jsonl(store, f"records/{source.id}.jsonl", result.records)
+        store.put(
+            f"records/{source.id}.jsonl", dump_records(stored, project.config.storage.records)
+        )
     # An empty run that is not seasonal is a failure, not the removal of every record: the
     # last records stay until a healthy run replaces them.
     _write_jsonl(store, f"review/{source.id}.jsonl", result.rejections)
@@ -338,10 +347,7 @@ def load_records(project: Project, source_id: str) -> list[OutputRecord]:
     key = f"records/{source_id}.jsonl"
     if not store.exists(key):
         return []
-    # Split on "\n" only: str.splitlines() also breaks on U+2028, U+0085 and form feeds,
-    # which JSON leaves raw inside strings.
-    lines = store.get(key).decode().split("\n")
-    return [OutputRecord.model_validate_json(line) for line in lines if line.strip()]
+    return parse_records(store.get(key).decode())
 
 
 def export_project(project: Project, today: date | None = None) -> tuple[Path, int]:
@@ -354,20 +360,74 @@ def export_project(project: Project, today: date | None = None) -> tuple[Path, i
             row = public_record(record, project.schema, rights, project.config.rights_policy, today)
             if row is not None:
                 rows.append(row)
-    rows = merge_rows(rows, project.schema)
-    path = project.root / project.config.export
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(
-        "".join(json.dumps(row, ensure_ascii=False, sort_keys=True) + "\n" for row in rows),
-        encoding="utf-8",
-    )
-    if project.config.export_csv:
-        csv_path = project.root / project.config.export_csv
-        csv_path.parent.mkdir(parents=True, exist_ok=True)
-        csv_path.write_text(csv_text(rows, project.schema), encoding="utf-8")
+    rows = merge_rows(prefer_rows(rows, project.schema), project.schema)
+    config = project.config
+    path = project.root / config.export
+    _write_export(path, rows, config.export_partition, _jsonl_text)
+    if config.export_csv:
+        schema = project.schema
+        _write_export(
+            project.root / config.export_csv,
+            rows,
+            config.export_partition,
+            lambda part: csv_text(part, schema),
+        )
     if project.config.changes_feed:
         write_change_feed(project, today or date.today())
-    return path, len(rows)
+    return export_location(project, config.export), len(rows)
+
+
+def export_location(project: Project, configured: str) -> Path:
+    """Where an export path's rows are: the file, or with ``export_partition`` its folder."""
+    path = project.root / configured
+    return partition_dir(path) if project.config.export_partition else path
+
+
+def export_files(project: Project, configured: str) -> list[Path]:
+    """The files an export path's rows were written to, sorted."""
+    path = project.root / configured
+    if project.config.export_partition is None:
+        return [path] if path.is_file() else []
+    return sorted(partition_dir(path).glob(f"*{path.suffix}"))
+
+
+def partition_dir(path: Path) -> Path:
+    """The folder of a partitioned export: exports/records.jsonl -> exports/records."""
+    return path.with_suffix("")
+
+
+def partition_name(value: Any) -> str:
+    """File stem for one partition value: lower case, runs of other characters as ``-``."""
+    if value in (None, "", []):
+        return "_none"
+    text = value if isinstance(value, str) else json.dumps(value, ensure_ascii=False)
+    return re.sub(r"[^a-z0-9]+", "-", text.casefold()).strip("-") or "_other"
+
+
+def _write_export(
+    path: Path,
+    rows: list[dict[str, Any]],
+    partition: str | None,
+    render: Callable[[list[dict[str, Any]]], str],
+) -> None:
+    if partition is None:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(render(rows), encoding="utf-8")
+        return
+    parts: dict[str, list[dict[str, Any]]] = {}
+    for row in rows:
+        parts.setdefault(partition_name(row.get(partition)), []).append(row)
+    folder = partition_dir(path)
+    folder.mkdir(parents=True, exist_ok=True)
+    for stale in folder.glob(f"*{path.suffix}"):
+        if stale.stem not in parts:
+            stale.unlink()
+    for name, part in sorted(parts.items()):
+        (folder / f"{name}{path.suffix}").write_text(render(part), encoding="utf-8")
+
+
+def _jsonl_text(rows: list[dict[str, Any]]) -> str:
+    return "".join(json.dumps(row, ensure_ascii=False, sort_keys=True) + "\n" for row in rows)
 
 
 def write_change_feed(project: Project, today: date) -> Path:

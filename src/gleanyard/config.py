@@ -280,6 +280,14 @@ class SourceConfig(StrictModel):
         ge=1,
         description="Warn when the records have not changed for this many days (off by default).",
     )
+    keep_removed: bool = Field(
+        default=False,
+        description=(
+            "Keep records that a later run no longer finds, for sources that publish only "
+            "recent values (such as the last 12 months) of a growing history. A run's "
+            "record with the same id replaces the kept one."
+        ),
+    )
     coverage: Coverage = Field(default_factory=Coverage)
     rights: SourceRights
     evidence: str | None = Field(
@@ -335,6 +343,13 @@ class StorageConfig(StrictModel):
     root: str = "data"
     changes_days: int = Field(
         default=90, ge=1, description="Days of change logs (changes/<date>.jsonl) to keep."
+    )
+    records: Literal["full", "compact"] = Field(
+        default="full",
+        description=(
+            "compact: store each source's records sorted by id with their provenance written "
+            "once, for sources with many thousands of records. Files stay JSON lines."
+        ),
     )
 
 
@@ -398,6 +413,14 @@ class ProjectConfig(StrictModel):
     export_csv: str | None = Field(
         default=None,
         description="Also write the public export as CSV to this path; off by default.",
+    )
+    export_partition: str | None = Field(
+        default=None,
+        pattern=r"^[a-z][a-z0-9_]*$",
+        description=(
+            "Split the export by this schema field: one file per value in a folder named "
+            "after the export path (exports/records/<value>.jsonl), and likewise for CSV."
+        ),
     )
     changes_feed: str | None = Field(
         default="exports/changes.json",

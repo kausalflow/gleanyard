@@ -97,6 +97,16 @@ class FieldSpec(StrictModel):
         return self
 
 
+class Prefer(StrictModel):
+    series: list[str] = Field(
+        min_length=1,
+        description=(
+            "Fields that together name a series, for example [indicator, country_code]. "
+            "A row that lacks one of them is always kept."
+        ),
+    )
+
+
 class ProjectSchema(StrictModel):
     name: str = Field(pattern=r"^[a-z][a-z0-9_-]*$")
     version: int = Field(default=1, ge=1)
@@ -111,6 +121,13 @@ class ProjectSchema(StrictModel):
         description=(
             "Fields that identify the same item across sources (for example title, start, "
             "venue). Export joins exported records that agree on all of them into one row."
+        ),
+    )
+    prefer: Prefer | None = Field(
+        default=None,
+        description=(
+            "Keep one source per series: when several sources export the same series, "
+            "export keeps all of its rows from the first of them in source order."
         ),
     )
 
@@ -131,6 +148,15 @@ class ProjectSchema(StrictModel):
         personal = [n for n in self.merge if self.fields[n].field_class == FieldClass.PERSONAL]
         if personal:
             raise ValueError(f"merge cannot use personal fields, which never export: {personal}")
+        if self.prefer is not None:
+            unknown = [name for name in self.prefer.series if name not in self.fields]
+            if unknown:
+                raise ValueError(f"prefer.series names unknown fields: {', '.join(unknown)}")
+            personal = [
+                n for n in self.prefer.series if self.fields[n].field_class == FieldClass.PERSONAL
+            ]
+            if personal:
+                raise ValueError(f"prefer.series cannot use personal fields: {personal}")
         return self
 
     @property
