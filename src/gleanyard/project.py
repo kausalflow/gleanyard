@@ -7,6 +7,7 @@ on rather than a stack trace.
 
 from __future__ import annotations
 
+import csv
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, TypeVar
@@ -23,6 +24,8 @@ from gleanyard.config import (
     SelectorsExtract,
     SourceConfig,
 )
+from gleanyard.export import csv_columns
+from gleanyard.extract.fields import read_table
 from gleanyard.schema import FieldClass, ProjectSchema
 
 PROJECT_FILE = "gleanyard.yaml"
@@ -113,8 +116,36 @@ def load_project(root: Path) -> Project:
             )
         seen[source.id] = rel
         if schema is not None:
-            issues.extend(_cross_check(source, schema, path, root))
+            issues.extend(
+                _cross_check(
+                    source, schema, path, root, config.rights_policy.require_reviewed_permission
+                )
+            )
         sources.append(source)
+    if schema is not None:
+        for name in config.export_sort:
+            if name not in schema.fields:
+                issues.append(
+                    Issue(
+                        file=PROJECT_FILE,
+                        path="export_sort",
+                        message=f"export_sort names unknown field {name!r}",
+                    )
+                )
+        allowed = set(csv_columns(schema))
+        for name in config.export_csv_columns or []:
+            if name not in allowed:
+                issues.append(
+                    Issue(
+                        file=PROJECT_FILE,
+                        path="export_csv_columns",
+                        message=f"export_csv_columns names {name!r}, which the CSV does not have",
+                    )
+                )
+    if config.export is None and config.export_csv is None:
+        issues.append(
+            Issue(file=PROJECT_FILE, path="export", message="set export or export_csv, or both")
+        )
     partition = config.export_partition
     if schema is not None and partition is not None:
         if partition not in schema.fields:
@@ -137,7 +168,7 @@ def load_project(root: Path) -> Project:
 
 
 def _cross_check(
-    source: SourceConfig, schema: ProjectSchema, path: Path, root: Path
+    source: SourceConfig, schema: ProjectSchema, path: Path, root: Path, require_review: bool
 ) -> list[Issue]:
     rel = _rel(path, root)
     issues: list[Issue] = []
@@ -168,6 +199,15 @@ def _cross_check(
         for key in extract.rewrite:
             if key not in schema.fields:
                 issue(["extract", "rewrite", key], _unknown_field(key, schema))
+        for index, join in enumerate(extract.join):
+            table = root / join.file
+            if not table.is_file():
+                issue(["extract", "join", index, "file"], f"join file {join.file!r} not found")
+                continue
+            try:
+                read_table(table, join)
+            except (ValueError, UnicodeDecodeError, csv.Error) as error:
+                issue(["extract", "join", index, "file"], str(error))
         if extract.cases:
             # A field counts as mapped when every case sets it, since one of them always applies.
             mapped |= set.intersection(*(set(case.set) for case in extract.cases))
@@ -185,7 +225,7 @@ def _cross_check(
     if source.filter is not None and source.filter.field not in schema.fields:
         issue(["filter", "field"], _unknown_field(source.filter.field, schema))
     actions = source.rights.allowed_actions
-    if source.enabled and not (actions.private_store and actions.normalize):
+    if source.enabled and require_review and not (actions.private_store and actions.normalize):
         issue(
             ["enabled"],
             "an enabled source needs rights.allowed_actions.private_store and normalize; "

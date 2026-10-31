@@ -24,7 +24,7 @@ from typing import Any
 
 from gleanyard import __version__
 from gleanyard.config import DataherbConfig
-from gleanyard.export import CSV_SOURCE_COLUMNS, csv_columns
+from gleanyard.export import csv_columns
 from gleanyard.project import Project
 from gleanyard.rights import export_blocker
 from gleanyard.run import SourceRun, export_files
@@ -99,7 +99,7 @@ def build_metadata(project: Project, rows: int, size: int, today: date | None = 
         document["source"] = "git"
         document["uri"] = uri
     resources = []
-    if exportable:
+    if exportable and project.config.export:
         fields = [{"name": "id", "type": "string", "description": "Stable record id."}]
         fields += [
             _field(name, spec)
@@ -135,8 +135,8 @@ def build_metadata(project: Project, rows: int, size: int, today: date | None = 
                 "schema": {"fields": fields, "primaryKey": "id"},
             }
         )
-        if project.config.export_csv:
-            resources.append(_csv_resource(project, rows))
+    if exportable and project.config.export_csv:
+        resources.append(_csv_resource(project, rows))
     document["datapackage"] = {"resources": resources}
     return {key: value for key, value in document.items() if value is not None}
 
@@ -144,30 +144,44 @@ def build_metadata(project: Project, rows: int, size: int, today: date | None = 
 def _csv_resource(project: Project, rows: int) -> dict[str, Any]:
     schema = project.schema
     assert schema is not None and project.config.export_csv is not None
-    fields = [{"name": "id", "type": "string", "description": "Stable record id."}]
-    for name in csv_columns(schema)[1 : -len(CSV_SOURCE_COLUMNS)]:
+    provenance = {
+        "id": {"name": "id", "type": "string", "description": "Stable record id."},
+        "_source": {"name": "_source", "type": "string", "description": "Id of the row's source."},
+        "_source_url": {
+            "name": "_source_url",
+            "type": "string",
+            "description": "Page the row was read from.",
+        },
+        "_attribution": {
+            "name": "_attribution",
+            "type": "string",
+            "description": "Required attribution.",
+        },
+        "_license": {"name": "_license", "type": "string", "description": "Licence of the source."},
+    }
+    fields = []
+    for name in project.config.export_csv_columns or csv_columns(schema):
+        if name in provenance:
+            fields.append(provenance[name])
+            continue
         field = _field(name, schema.fields[name])
         if field["type"] in {"array", "object"}:
             field["type"] = "string"
         fields.append(field)
-    fields += [
-        {"name": "_source", "type": "string", "description": "Id of the row's source."},
-        {"name": "_source_url", "type": "string", "description": "Page the row was read from."},
-        {"name": "_attribution", "type": "string", "description": "Required attribution."},
-        {"name": "_license", "type": "string", "description": "Licence of the source."},
-    ]
     resource: dict[str, Any] = {
         "name": "records-csv",
-        "path": _resource_path(project, project.config.export_csv),
+        "path": project.config.export_csv,
         "format": "csv",
         "mediatype": "text/csv",
         "encoding": "utf-8",
         "rows": rows,
-        "schema": {"fields": fields, "primaryKey": "id"},
+        "schema": {"fields": fields},
     }
-    files = export_files(project, project.config.export_csv)
-    if files:
-        resource["bytes"] = sum(file.stat().st_size for file in files)
+    if any(field["name"] == "id" for field in fields):
+        resource["schema"]["primaryKey"] = "id"
+    path = project.root / project.config.export_csv
+    if path.is_file():
+        resource["bytes"] = path.stat().st_size
     return resource
 
 
@@ -182,7 +196,8 @@ def write_metadata(project: Project, rows: int) -> Path | None:
     config = project.config.dataherb
     if config is None or project.schema is None:
         return None
-    size = sum(file.stat().st_size for file in export_files(project, project.config.export))
+    main = project.config.export or project.config.export_csv
+    size = sum(file.stat().st_size for file in export_files(project, main)) if main else 0
     document = build_metadata(project, rows, size)
     path = project.root / config.metadata
     path.parent.mkdir(parents=True, exist_ok=True)

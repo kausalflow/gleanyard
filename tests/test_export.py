@@ -103,15 +103,25 @@ def test_missing_required_public_field_drops_record():
 @pytest.mark.parametrize(
     "overrides",
     [
-        {"review_status": "pending"},
+        {"review_status": "rejected"},
         {"effective_tier": "internal_only"},
+        {"effective_tier": "blocked"},
         {"expires_at": "2026-10-09"},
         {"attribution_required": True},
-        {"effective_tier": "open"},
     ],
 )
 def test_source_level_blocks(overrides):
     assert export(rights(**overrides)) is None
+
+
+def test_pending_review_exports_by_default():
+    assert export(rights(review_status="pending")) is not None
+
+
+@pytest.mark.parametrize("overrides", [{"review_status": "pending"}, {"effective_tier": "open"}])
+def test_strict_policy_blocks(overrides):
+    strict = RightsPolicy(require_reviewed_permission=True)
+    assert public_record(RECORD, SCHEMA, {"src": rights(**overrides)}, strict, TODAY) is None
 
 
 def test_removed_source_drops_records():

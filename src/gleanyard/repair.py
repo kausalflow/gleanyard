@@ -306,9 +306,16 @@ def _protected_changes(root: Path, base: str, path: str, notes: list[str]) -> li
 
 def _generated_paths(project: Project) -> list[PurePosixPath]:
     config = project.config
-    exports = [config.export] + ([config.export_csv] if config.export_csv else [])
+    exports = [path for path in (config.export, config.export_csv) if path]
     if config.export_partition:
-        exports = [str(PurePosixPath(path).with_suffix("")) for path in exports]
+        # JSON lines are only written in parts; the CSV is written whole and in parts.
+        exports = [config.export_csv] if config.export_csv else []
+        if config.export:
+            exports.append(str(PurePosixPath(config.export).with_suffix("")))
+        if config.export_csv:
+            exports.append(
+                config.export_csv_parts or str(PurePosixPath(config.export_csv).with_suffix(""))
+            )
     paths = [config.storage.root, *exports, config.status]
     if config.changes_feed:
         paths.append(config.changes_feed)

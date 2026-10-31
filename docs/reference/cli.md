@@ -246,7 +246,8 @@ URLs, the latest `evidence/<folder>/<date>-terms.yaml` (page quotes, `reading`) 
   `facts_only`, every field but `personal` ones for open and licensed tiers, none for
   `internal_only`, `unknown` and `blocked`), or to type them;
 - the licence id and URL for open tiers, and the attribution text when one is required;
-- approve, reject or skip; whether to enable the sources (approved ones only); notes.
+- approve, reject or skip; whether to enable the sources (approved ones only); notes. The
+  review is a suggestion: a source can be enabled and collected while it is pending.
 
 Only the `rights:` block and the `enabled:` line of each source file are rewritten, with
 `reviewed_at` set to today. It ends with `validate` and exits 1 if the project does not pass.
@@ -261,13 +262,23 @@ records, so run `collect` first.
 With `export_csv` set, it also writes the same rows as CSV: `id`, one column per schema field
 (personal fields never), then `_source`, `_source_url`, `_attribution` and `_license`. List
 values are joined with `; ` and objects such as money are written as JSON.
+`export_csv_columns` picks the columns and their order, for example the schema fields
+alone, which keeps a large CSV small. `export_sort` sorts the rows of every export by schema
+fields (default: source order); a sorted export also keeps a commit's diff readable.
+
+`export: null` leaves out the JSON lines export, for a project whose export is the CSV
+alone. The JSON lines rows carry when each page was retrieved, so for a large project that
+re-reads every source on each run, every row changes on every run, while the CSV rows only
+change with their values.
 
 With `export_partition` set to a schema field, the export is split into one file per value
 of that field, in a folder named after the export path: `exports/records/<value>.jsonl`, and
 for CSV `dataset/records/<value>.csv`. A file name is the value in lower case with other
 characters as `-` (`_none` for rows without a value). Files for values that no longer
 occur are deleted. Use it when one file would be too large for git hosting (GitHub refuses
-files over 100 MB). `dataherb.json` lists the files of each part as one resource.
+files over 100 MB). `dataherb.json` lists the JSON lines parts as one resource. The CSV is
+compact enough to stay whole as well: `export_csv` gets every row, and the parts go to
+`export_csv_parts`, by default a folder named after the CSV.
 
 ## `gleanyard json-schema {source|schema|project}`
 
@@ -286,13 +297,16 @@ user_agent: "my-project (+https://example.org/contact)"
 storage: {root: data, changes_days: 90, records: full}   # change logs older than this are deleted
 export: exports/records.jsonl
 export_csv: null                    # also write the export as CSV here, e.g. dataset/records.csv
+export_csv_columns: null            # the CSV's columns, in order; default: all
+export_sort: []                     # sort the export by these schema fields
 export_partition: null              # split the export into one file per value of this field
+export_csv_parts: null              # folder for the CSV parts, e.g. data/by_indicator
 changes_feed: exports/changes.json        # JSON Feed of recent changes; null turns it off
 status: status.json                 # health report, read by the status hub
 excluded_hosts: []                  # hosts `check` reports as excluded
 rights_policy:
   permitted_tiers: [open, open_attribution, licensed, facts_only, link_only]
-  require_reviewed_permission: true
+  require_reviewed_permission: false  # true: collect and export only owner-approved sources
 ```
 
 Set `user_agent` to something that lets a site owner reach you.

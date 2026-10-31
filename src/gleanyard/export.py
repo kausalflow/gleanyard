@@ -78,9 +78,11 @@ def csv_columns(schema: ProjectSchema) -> list[str]:
     return ["id", *fields, *CSV_SOURCE_COLUMNS]
 
 
-def csv_text(rows: list[dict[str, Any]], schema: ProjectSchema) -> str:
+def csv_text(
+    rows: list[dict[str, Any]], schema: ProjectSchema, columns: list[str] | None = None
+) -> str:
     """The public export as CSV: one column per schema field, list values joined by "; "."""
-    columns = csv_columns(schema)
+    columns = columns or csv_columns(schema)
     buffer = io.StringIO()
     writer = csv.writer(buffer, lineterminator="\n")
     writer.writerow(columns)

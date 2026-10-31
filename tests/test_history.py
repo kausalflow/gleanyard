@@ -152,7 +152,9 @@ def test_partitioned_export_writes_one_file_per_value(root):
     package = json.loads((root / "dataherb.json").read_text())["datapackage"]
     paths = {resource["name"]: resource["path"] for resource in package["resources"]}
     assert paths["records"] == [f"exports/records/{file.name}" for file in files]
-    assert paths["records-csv"] == [f"dataset/events/{file.name}" for file in csvs]
+    assert paths["records-csv"] == "dataset/events.csv"  # the CSV is also written whole
+    whole = (root / "dataset" / "events.csv").read_text().splitlines()
+    assert len(whole) == count + 1
 
     stale = folder / "1999-01-01.jsonl"
     stale.write_text("{}\n")
@@ -215,3 +217,36 @@ def test_prefer_fields_must_exist_and_never_be_personal():
         schema(["indicator", "region"])
     with pytest.raises(ValidationError, match="personal"):
         schema(["email"])
+
+
+def test_csv_only_export_with_chosen_columns_and_sort(root):
+    config = {
+        "export": None,
+        "export_csv": "dataset/events.csv",
+        "export_csv_columns": ["start_date", "title", "_source"],
+        "export_sort": ["start_date", "title"],
+        "dataherb": {"id": "events"},
+    }
+    setup(root, config=config)
+    project, run = collect(root, first_events(99))
+    path, count = export_project(project, today=date(2026, 10, 10))
+    assert path == root / "dataset" / "events.csv" and count == run.records
+    assert not (root / "exports" / "records.jsonl").exists()
+    lines = path.read_text().splitlines()
+    assert lines[0] == "start_date,title,_source"
+    keys = [tuple(line.split(",")[:2]) for line in lines[1:]]
+    assert keys == sorted(keys)
+
+    write_metadata(project, count)
+    package = json.loads((root / "dataherb.json").read_text())["datapackage"]
+    (resource,) = package["resources"]
+    assert resource["path"] == "dataset/events.csv" and "primaryKey" not in resource["schema"]
+    assert [field["name"] for field in resource["schema"]["fields"]] == lines[0].split(",")
+
+
+def test_export_options_are_checked(root):
+    setup(root, config={"export": None, "export_sort": ["nowhere"], "export_csv_columns": ["x"]})
+    messages = " ".join(issue.message for issue in load_project(root).issues)
+    assert "set export or export_csv" in messages
+    assert "export_sort names unknown field 'nowhere'" in messages
+    assert "export_csv_columns names 'x'" in messages

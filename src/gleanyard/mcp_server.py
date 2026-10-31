@@ -254,6 +254,8 @@ def build_server(root: Path, *, writes: bool = False) -> MCPServer:
         """Search the public export (exports/, rights-filtered) by text, optionally for one
         source. Only exported fields are visible; stored records in data/ are not."""
         project = load_project(root)
+        if project.config.export is None:
+            return {"export": None, "total": 0, "records": [], "note": "export is turned off"}
         path = export_location(project, project.config.export)
         lines = [
             line

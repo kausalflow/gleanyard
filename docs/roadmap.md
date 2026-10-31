@@ -89,6 +89,15 @@ access, in a repo of its own.
   `keep_removed` keeps history a source no longer publishes, `storage.records: compact`
   shrinks stored records, and `export_partition` splits the export into files per value.
 
+- Lookup tables (0.13.0): `join` adds columns from a CSV file in the repo (country names by
+  code), `where` leaves out items by a regex, a `map` entry can list fallback keys, and the
+  partitioned CSV is also written whole, with its parts in `export_csv_parts`.
+  `export_csv_columns` and `export_sort` shape the CSV, and `export: null` makes it the only
+  export. Found while matching the old economic indicators data exactly.
+- Rights review as a suggestion (0.13.0): a pending review no longer stops collecting or
+  exporting; only `rejected`, the tier `blocked` and non-exportable tiers do.
+  `rights_policy.require_reviewed_permission: true` keeps the old fail-closed rule.
+
 ## Decisions so far
 
 - Recurring sources are the focus; one-off research is possible through `llm` mode but not
