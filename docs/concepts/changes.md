@@ -80,3 +80,30 @@ extra spaces, become one row:
 Pick merge fields that are specific: a title alone joins unrelated events with the same name.
 `merge` may not use `personal` fields, which never export. Stored records in `data/` stay one
 per source; only the export is merged.
+
+## One source per series
+
+Statistics often come from several publishers: the same country's consumer prices from the
+OECD and from the IMF. Mixing their rows month by month gives a series with breaks in it.
+Name the fields that make a series with `prefer` in `schema.yaml`:
+
+```yaml
+identity: [indicator, country_code, period]
+prefer:
+  series: [indicator, country_code]
+```
+
+At export, before merging, each series is kept whole from the first source, in source order,
+that exports any row of it; the other sources' rows of that series are dropped. A series only
+one source has is kept from that source. A row that lacks one of the `series` fields is
+always kept. Source order is the order of the files under `sources/`, so name the files to
+put the preferred publisher first (`10-oecd-prices.yaml`, `20-imf-cpi.yaml`).
+
+## Keeping history
+
+Each collect replaces a source's stored records with the ones the run found, and logs the
+ones it no longer finds as removed. A source that publishes only its latest values, such as
+the last twelve months of a growing series, would lose its history that way. Set
+`keep_removed: true` on that source and the records a run no longer finds stay stored and
+exported; a run's record with the same id replaces the kept one, so a revised value wins.
+The run's own counts, fill rates and health still describe only what it found.

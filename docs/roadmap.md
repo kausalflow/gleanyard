@@ -85,6 +85,10 @@ access, in a repo of its own.
   CSV and JSON rows into one item per column, and `fetch.accept` asks an API for a format.
   The first part of moving DataHerb's economic indicators onto gleanyard.
 
+- Large statistics (0.12.0): `prefer.series` keeps each series from one source,
+  `keep_removed` keeps history a source no longer publishes, `storage.records: compact`
+  shrinks stored records, and `export_partition` splits the export into files per value.
+
 ## Decisions so far
 
 - Recurring sources are the focus; one-off research is possible through `llm` mode but not

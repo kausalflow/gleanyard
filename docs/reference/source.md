@@ -38,6 +38,7 @@ retention: {raw_days: 30}
 | `filter` | Optional. Check that a filter in the URL is still applied; see below. |
 | `fetch` | Request limits. |
 | `expect_empty` | `never` (default) or `seasonal`. A seasonal source with no records is healthy, not failing. |
+| `keep_removed` | Optional, default false. Keep stored records that a later run no longer finds, for sources that publish only recent values. See [keeping history](../concepts/changes.md#keeping-history). |
 | `expect_change_days` | Optional. Mark the source `degraded` when its records have not changed for this many days. See [Health](../concepts/status.md). |
 | `coverage` | Where the source applies. Informational. |
 | `rights` | See [Rights and export](../concepts/rights.md). |

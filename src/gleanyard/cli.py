@@ -45,7 +45,7 @@ from gleanyard.review import (
     write_decision,
 )
 from gleanyard.rights import AllowedActions, RightsTier
-from gleanyard.run import collect_source, export_project, record_store
+from gleanyard.run import collect_source, export_location, export_project, record_store
 from gleanyard.scaffold import scaffold as scaffold_url
 from gleanyard.schema import ProjectSchema
 from gleanyard.skill import skill_state, write_skill
@@ -193,8 +193,10 @@ def export(root: ProjectDir = Path("."), as_json: JsonFlag = False) -> None:
     """Write the rights-filtered public export from stored records."""
     project = _loaded(root)
     path, count = export_project(project)
-    metadata = write_metadata(project, count, path)
-    csv_path = project.root / project.config.export_csv if project.config.export_csv else None
+    metadata = write_metadata(project, count)
+    csv_path = (
+        export_location(project, project.config.export_csv) if project.config.export_csv else None
+    )
     if as_json:
         result = {"path": str(path), "records": count}
         if csv_path:

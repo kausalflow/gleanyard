@@ -20,6 +20,7 @@ fields:
 | `identity` | Fields that together identify one record in a source. At least one must be required. |
 | `fields` | Field name (lower_snake_case) to a field definition. |
 | `merge` | Optional. Fields that identify the same item across sources; export joins rows that agree on all of them. See [merging records](../concepts/changes.md#merging-records-across-sources). |
+| `prefer` | Optional. `series:` lists the fields that name a series; export keeps each series from the first source that has it. See [one source per series](../concepts/changes.md#one-source-per-series). |
 
 ## Field definition
 
