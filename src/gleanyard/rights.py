@@ -2,7 +2,13 @@
 
 Rights are declared per source and checked again at export against the
 *current* source config, so withdrawing a permission removes records from the
-next export without touching history. Everything defaults to fail-closed.
+next export without touching history.
+
+The owner's review is a suggestion by default: a source collects and exports with the rights
+written in its file while its review is pending, and only an explicit no (a rejected review,
+the tier ``blocked``, a tier the policy does not export) stops it. With
+``rights_policy.require_reviewed_permission: true`` a project goes back to fail-closed: nothing
+is collected without ``private_store`` and ``normalize``, and nothing is exported unapproved.
 """
 
 from __future__ import annotations
@@ -93,7 +99,26 @@ class RightsPolicy(StrictModel):
             RightsTier.LINK_ONLY,
         ]
     )
-    require_reviewed_permission: bool = True
+    require_reviewed_permission: bool = Field(
+        default=False,
+        description=(
+            "true: collect only with private_store and normalize allowed, and export only "
+            "approved sources. false (default): the owner's review is a suggestion; a pending "
+            "source collects and exports with the rights its file states."
+        ),
+    )
+
+
+def collect_blocker(rights: SourceRights, policy: RightsPolicy) -> str | None:
+    """Why a source may not be collected at all, or None if it may."""
+    if rights.review_status == "rejected":
+        return "the owner rejected this source's rights"
+    if rights.effective_tier == RightsTier.BLOCKED:
+        return "the source's tier is blocked"
+    actions = rights.allowed_actions
+    if policy.require_reviewed_permission and not (actions.private_store and actions.normalize):
+        return "rights do not allow private_store and normalize"
+    return None
 
 
 def export_blocker(rights: SourceRights | None, policy: RightsPolicy, today: date) -> str | None:
@@ -102,14 +127,18 @@ def export_blocker(rights: SourceRights | None, policy: RightsPolicy, today: dat
         return "source is no longer configured"
     if rights.effective_tier not in policy.permitted_tiers:
         return f"tier {rights.effective_tier.value} is not exportable"
+    if rights.review_status == "rejected":
+        return "rights were rejected"
     if policy.require_reviewed_permission and rights.review_status != "approved":
         return "rights are not approved"
     if rights.expires_at is not None and rights.expires_at < today:
         return "rights review has expired"
     if rights.attribution_required and not rights.attribution_text:
         return "attribution is required but no attribution text is set"
-    if rights.effective_tier in {RightsTier.OPEN, RightsTier.OPEN_ATTRIBUTION} and not (
-        rights.license_id and rights.license_url
+    if (
+        policy.require_reviewed_permission
+        and rights.effective_tier in {RightsTier.OPEN, RightsTier.OPEN_ATTRIBUTION}
+        and not (rights.license_id and rights.license_url)
     ):
         return "open tier needs a licence id and URL"
     return None

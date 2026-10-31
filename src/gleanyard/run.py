@@ -44,6 +44,7 @@ from gleanyard.merge import merge_rows, prefer_rows
 from gleanyard.project import Project
 from gleanyard.readers import read_sitemap
 from gleanyard.records import dump_records, parse_records
+from gleanyard.rights import collect_blocker
 from gleanyard.schema import FieldIssue
 from gleanyard.storage import LocalObjectStore
 
@@ -91,13 +92,9 @@ def collect_source(
 ) -> SourceRun:
     assert project.schema is not None
     actions = source.rights.allowed_actions
-    if not (actions.private_store and actions.normalize):
-        return SourceRun(
-            source_id=source.id,
-            ok=False,
-            error_kind="rights",
-            error="rights do not allow private_store and normalize",
-        )
+    blocker = collect_blocker(source.rights, project.config.rights_policy)
+    if blocker is not None:
+        return SourceRun(source_id=source.id, ok=False, error_kind="rights", error=blocker)
     if isinstance(source.extract, LlmExtract) and not actions.send_to_model:
         return SourceRun(
             source_id=source.id,

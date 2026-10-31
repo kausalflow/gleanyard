@@ -116,7 +116,11 @@ def load_project(root: Path) -> Project:
             )
         seen[source.id] = rel
         if schema is not None:
-            issues.extend(_cross_check(source, schema, path, root))
+            issues.extend(
+                _cross_check(
+                    source, schema, path, root, config.rights_policy.require_reviewed_permission
+                )
+            )
         sources.append(source)
     if schema is not None:
         for name in config.export_sort:
@@ -164,7 +168,7 @@ def load_project(root: Path) -> Project:
 
 
 def _cross_check(
-    source: SourceConfig, schema: ProjectSchema, path: Path, root: Path
+    source: SourceConfig, schema: ProjectSchema, path: Path, root: Path, require_review: bool
 ) -> list[Issue]:
     rel = _rel(path, root)
     issues: list[Issue] = []
@@ -221,7 +225,7 @@ def _cross_check(
     if source.filter is not None and source.filter.field not in schema.fields:
         issue(["filter", "field"], _unknown_field(source.filter.field, schema))
     actions = source.rights.allowed_actions
-    if source.enabled and not (actions.private_store and actions.normalize):
+    if source.enabled and require_review and not (actions.private_store and actions.normalize):
         issue(
             ["enabled"],
             "an enabled source needs rights.allowed_actions.private_store and normalize; "

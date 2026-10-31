@@ -90,9 +90,31 @@ def test_records_with_unicode_line_separators_load(project_dir):
     export_project(project)
 
 
-def test_collect_refuses_without_rights(project_dir):
+def test_pending_review_still_collects(project_dir):
     project = load_project(project_dir)
-    source = next(item for item in project.sources if item.id == "gut-hixholz-farm-events")
+    source = next(item for item in project.sources if item.id == "aachen-city-events")
+    pending = source.rights.model_copy(
+        update={"review_status": "pending", "allowed_actions": AllowedActions()}
+    )
+    source = source.model_copy(update={"rights": pending})
+    body = (FIXTURES / "calendar.ics").read_bytes()
+    run = collect_source(project, source, client=client(body), today=date(2026, 10, 10))
+    assert run.ok and run.records > 0, run
+
+
+@pytest.mark.parametrize("update", [{"review_status": "rejected"}, {"effective_tier": "blocked"}])
+def test_collect_refuses_an_explicit_no(project_dir, update):
+    project = load_project(project_dir)
+    source = next(item for item in project.sources if item.id == "aachen-city-events")
+    source = source.model_copy(update={"rights": source.rights.model_copy(update=update)})
+    run = collect_source(project, source)
+    assert not run.ok and run.error_kind == "rights"
+
+
+def test_strict_policy_refuses_without_rights(project_dir):
+    project = load_project(project_dir)
+    project.config.rights_policy.require_reviewed_permission = True
+    source = project.sources[0]
     source = source.model_copy(
         update={"rights": source.rights.model_copy(update={"allowed_actions": AllowedActions()})}
     )

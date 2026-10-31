@@ -94,6 +94,9 @@ access, in a repo of its own.
   partitioned CSV is also written whole, with its parts in `export_csv_parts`.
   `export_csv_columns` and `export_sort` shape the CSV, and `export: null` makes it the only
   export. Found while matching the old economic indicators data exactly.
+- Rights review as a suggestion (0.13.0): a pending review no longer stops collecting or
+  exporting; only `rejected`, the tier `blocked` and non-exportable tiers do.
+  `rights_policy.require_reviewed_permission: true` keeps the old fail-closed rule.
 
 ## Decisions so far
 

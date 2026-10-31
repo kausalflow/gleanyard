@@ -27,12 +27,31 @@ Everything defaults to the safe answer: unknown tier, nothing allowed, nothing p
 `gleanyard rights review` asks the owner for these values source by source, with suggestions
 from the evidence and the tier, and writes them; see the [command line](../reference/cli.md).
 
+## The review is a suggestion
+
+The owner's review is recommended, not required. An enabled source whose review is still
+`pending` is collected, and exported with the tier and `public_fields` its file states. Only an
+explicit no stops a source: `review_status: rejected` or the tier `blocked` stops collecting
+and exporting, and a tier outside `permitted_tiers` (by default `internal_only` and
+`unknown`) is collected but never exported.
+
+A project that wants the stricter rule sets it in `gleanyard.yaml`:
+
+```yaml
+rights_policy:
+  require_reviewed_permission: true
+```
+
+Then a source is collected only when its rights allow `private_store` and `normalize`
+(`validate` refuses to enable it otherwise), exported only once approved, and an open tier
+also needs a `license_id` and `license_url`.
+
 ## Tiers
 
 `open`, `open_attribution`, `licensed`, `facts_only`, `link_only`, `internal_only`,
 `unknown` and `blocked`. By default the first five can be exported; the rest never are.
-Open tiers also need a `license_id` and `license_url`. Change the exportable tiers or the
-approval requirement under `rights_policy` in `gleanyard.yaml`.
+Open tiers should name a `license_id` and `license_url`, so the export can carry them. Change
+the exportable tiers or the approval requirement under `rights_policy` in `gleanyard.yaml`.
 
 ## Field classes
 
@@ -49,8 +68,8 @@ Each schema field has a class that decides which permission governs it:
 
 `gleanyard export` writes a record only if all of these hold:
 
-- the source still exists, is approved, is in an exportable tier and its review has not
-  expired;
+- the source still exists, its review is not `rejected` (and is `approved`, in strict
+  mode), it is in an exportable tier and its review has not expired;
 - attribution text is set when attribution is required;
 - every **required** schema field can be exported for that source.
 

@@ -13,7 +13,7 @@ page from a network problem without reading messages.
 | `bounds_exceeded` | A configured limit was reached. | More requests, bytes or occurrences than the source's limits allow, or a request to a host the source does not list. |
 | `empty` | The run succeeded but produced no records. | A broken mapping or page, unless the source is `expect_empty: seasonal`. |
 | `model` | The language model failed or returned unusable output. | `llm` mode with no provider key, the optional extra not installed, a provider outage, or a reply that is not `{"items": [...]}`. |
-| `rights` | The source's rights do not allow collection. | Missing `private_store` or `normalize`, or `send_to_model` for `llm` mode. |
+| `rights` | The source's rights do not allow collection. | `review_status: rejected`, the tier `blocked`, `send_to_model` missing for `llm` mode, or (with `require_reviewed_permission: true`) `private_store` or `normalize` missing. |
 | `no_cache` | `--from-cache` found no stored run. | The source has never been collected, or its rights did not allow storage. |
 
 Limits never truncate silently. A calendar with more occurrences than `max_occurrences`

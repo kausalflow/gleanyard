@@ -246,7 +246,8 @@ URLs, the latest `evidence/<folder>/<date>-terms.yaml` (page quotes, `reading`) 
   `facts_only`, every field but `personal` ones for open and licensed tiers, none for
   `internal_only`, `unknown` and `blocked`), or to type them;
 - the licence id and URL for open tiers, and the attribution text when one is required;
-- approve, reject or skip; whether to enable the sources (approved ones only); notes.
+- approve, reject or skip; whether to enable the sources (approved ones only); notes. The
+  review is a suggestion: a source can be enabled and collected while it is pending.
 
 Only the `rights:` block and the `enabled:` line of each source file are rewritten, with
 `reviewed_at` set to today. It ends with `validate` and exits 1 if the project does not pass.
@@ -305,7 +306,7 @@ status: status.json                 # health report, read by the status hub
 excluded_hosts: []                  # hosts `check` reports as excluded
 rights_policy:
   permitted_tiers: [open, open_attribution, licensed, facts_only, link_only]
-  require_reviewed_permission: true
+  require_reviewed_permission: false  # true: collect and export only owner-approved sources
 ```
 
 Set `user_agent` to something that lets a site owner reach you.

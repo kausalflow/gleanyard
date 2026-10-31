@@ -87,9 +87,10 @@ Trigger: a candidate the owner marked ready.
    event calendars, so a frozen feed is noticed.
 6. Fill `rights` from the terms you read; leave `review_status: pending` and `enabled: false`.
 7. Open a PR whose description is the output of `gleanyard try <id> --markdown`, plus the
-   evidence file and your reading of the terms. The owner reviews, then sets rights and
-   enables with `gleanyard rights review`, which shows the evidence file's `reading` and
-   `suggested_tier`: write both there.
+   evidence file and your reading of the terms. The owner enables it, and records a rights
+   decision with `gleanyard rights review`, which shows the evidence file's `reading` and
+   `suggested_tier`: write both there. The review is a suggestion: a pending source collects
+   once enabled, and only `rejected` or the tier `blocked` stops it.
 
 ## Procedure: Add a source from the registry
 

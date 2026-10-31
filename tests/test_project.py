@@ -85,8 +85,20 @@ rights: {public_fields: [secret]}
     assert "extract.map.colour: 'colour' is not a field" in found
     assert "extract.defaults.mood" in found
     assert "required fields not mapped: start_date, source_url" in found
-    assert "an enabled source needs" in found
+    assert "an enabled source needs" not in found
     assert "rights.public_fields: unknown fields: secret" in found
+
+
+def test_strict_policy_needs_reviewed_actions(project):
+    (project / "gleanyard.yaml").write_text(
+        "rights_policy: {require_reviewed_permission: true}\n", encoding="utf-8"
+    )
+    path = project / "sources" / "aachen-city-events.yaml"
+    text = path.read_text().replace("enabled: false", "enabled: true")
+    path.write_text(text.replace("private_store: true", "private_store: false"))
+    assert any("an enabled source needs" in issue for issue in issues(project))
+    (project / "gleanyard.yaml").unlink()
+    assert not any("an enabled source needs" in issue for issue in issues(project))
 
 
 def test_reader_options_are_strict(project):
