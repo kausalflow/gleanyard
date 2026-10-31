@@ -28,6 +28,7 @@ from gleanyard.config import (
     RssReader,
     SitemapReader,
     SourceConfig,
+    Unpivot,
 )
 from gleanyard.errors import BoundsExceeded, StructureChanged
 
@@ -95,6 +96,22 @@ def read_csv(source: SourceConfig, body: bytes, options: CsvReader) -> list[Item
             raise StructureChanged(source.id, f"CSV row {reader.line_num} has extra columns")
         rows.append({key.strip(): value for key, value in row.items()})
     return rows
+
+
+def unpivot(source: SourceConfig, items: list[Item], options: Unpivot | None) -> list[Item]:
+    """One item per listed column of each wide item; an empty cell gives no item."""
+    if options is None:
+        return items
+    if items and not any(column in items[0] for column in options.columns):
+        raise StructureChanged(source.id, "none of the unpivot columns is in the data")
+    long = []
+    for item in items:
+        kept = {key: item[key] for key in options.keep if key in item}
+        for column, label in options.columns.items():
+            value = item.get(column)
+            if value not in (None, ""):
+                long.append({**kept, options.name: label, options.value: value})
+    return long
 
 
 # RSS and Atom
@@ -304,9 +321,9 @@ def read_items(source: SourceConfig, body: bytes, today: date | None = None) -> 
     """Items from a feed delivery; raises for document deliveries."""
     options = source.reader_options
     if source.delivery == Delivery.JSON:
-        return read_json(source, body, options)
+        return unpivot(source, read_json(source, body, options), options.unpivot)
     if source.delivery == Delivery.CSV:
-        return read_csv(source, body, options)
+        return unpivot(source, read_csv(source, body, options), options.unpivot)
     if source.delivery == Delivery.RSS:
         return read_rss(source, body, options)
     if source.delivery == Delivery.ICAL:

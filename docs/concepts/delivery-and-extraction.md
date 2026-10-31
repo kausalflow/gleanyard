@@ -44,6 +44,57 @@ Dot paths reach into nested JSON: `offers.0.price` is the price of the first off
 every element of a list: `resources.*.format` is the list of formats of all resources, for a
 field with `many: true`. `jsonld` mappings take the same paths.
 
+### Values chosen by what an item holds
+
+Statistics APIs often return several measures in one response and name each one by a code.
+`cases` set constant fields from those codes. The first case whose `when` keys all match
+sets its fields, and an item that no case matches is skipped:
+
+```yaml
+delivery: csv
+url: https://sdmx.oecd.org/public/rest/data/OECD.SDD.TPS,DSD_PRICES@DF_PRICES_ALL,/.M.N.CPI..?format=csvfile
+extract:
+  mode: fields
+  map: {country_code: REF_AREA, year_month: TIME_PERIOD, value: OBS_VALUE}
+  defaults: {source: OECD}
+  cases:
+    - when: {MEASURE: CPI, TRANSFORMATION: GY}
+      set: {indicator: cpi_yoy, unit: Percent change over 1 year}
+    - when: {MEASURE: CPI, TRANSFORMATION: _Z}
+      set: {indicator: cpi_index, unit: Index}
+```
+
+A `when` value may be a list (`MEASURE: [CPI, HICP]`), and keys may be dot paths. `validate`
+counts a required field as mapped when every case sets it.
+
+`rewrite` fixes a format with a regular expression substitution on the mapped text, for
+example IMF months:
+
+```yaml
+  rewrite:
+    year_month: {pattern: '^(\d{4})-M(\d{2})$', replace: '\1-\2'}   # 2026-M08 -> 2026-08
+```
+
+### Wide tables
+
+Some CSV and JSON sources put one measure in each column. The reader's `unpivot` turns each
+row into one item per listed column, and an empty cell gives no item:
+
+```yaml
+reader:
+  unpivot:
+    keep: [surveyDate]                       # copied into every item
+    columns: {gacdisa: business_conditions, nocdisa: new_orders}
+    name: indicator                          # key for the label (default: name)
+    value: value                             # key for the cell (default: value)
+```
+
+### Content negotiation
+
+APIs that pick the format from the `Accept` header (SDMX services among them) get it through
+`fetch.accept`, for example `application/vnd.sdmx.data+csv;version=1.0.0`. It is the only
+request header a source can set. Cookies and authorization stay out of reach.
+
 ### What each reader gives you
 
 - **iCal**: keys are the iCalendar property names (`SUMMARY`, `DTSTART`, `DTEND`,

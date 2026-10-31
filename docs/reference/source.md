@@ -54,8 +54,10 @@ retention: {raw_days: 30}
 | | `past_days` | 7 |
 | | `horizon_days` | 366 |
 | `json` | `items_path` (dot path to the list) | the top level |
+| | `unpivot` (one item per listed column; see [wide tables](../concepts/delivery-and-extraction.md#wide-tables)) | off |
 | `csv` | `delimiter` | `,` |
 | | `encoding` | `utf-8` |
+| | `unpivot` | off |
 | `sitemap` | `include` (regular expression a URL must match) | all |
 | | `max_pages` | 50 |
 | `rss` | `include` (regular expression the item's title or text must match; other items are skipped, not rejected) | all |
@@ -70,7 +72,7 @@ each item: every element becomes its own candidate record (see
 
 | Mode | Keys |
 | --- | --- |
-| `fields` | `map`: schema field to source key or dot path |
+| `fields` | `map`: schema field to source key or dot path; optional `cases` (constant fields chosen by an item's values) and `rewrite` (a regex substitution per field); see [values chosen by what an item holds](../concepts/delivery-and-extraction.md#values-chosen-by-what-an-item-holds) |
 | `jsonld` | `types`: schema.org types to read; optional `map` |
 | `selectors` | `selectors`: path to a crawl4ai JSON CSS schema, relative to the project |
 | `llm` | `llm.model`, `llm.max_pages_per_run`, `llm.max_cost_per_run_eur`, `llm.only_if_changed`, `llm.input_price_per_mtok_eur`, `llm.output_price_per_mtok_eur`, `llm.max_input_chars`; optional `instructions` |
@@ -124,3 +126,4 @@ Records with no value for the field are not judged.
 | `max_response_bytes` | 5 MiB |
 | `delay_seconds` | 1.0 |
 | `timeout_seconds` | 30 |
+| `accept` | none; the `Accept` header, for APIs that choose the format by content negotiation |

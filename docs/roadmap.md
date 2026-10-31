@@ -80,6 +80,11 @@ access, in a repo of its own.
   as CSV too, listed in `dataherb.json`. Found while moving DataHerb's dataset scrapers onto
   gleanyard.
 
+- Statistics APIs (0.11.0): `cases` set fields from an item's codes, `rewrite` fixes a value's
+  format, `unpivot` turns wide
+  CSV and JSON rows into one item per column, and `fetch.accept` asks an API for a format.
+  The first part of moving DataHerb's economic indicators onto gleanyard.
+
 ## Decisions so far
 
 - Recurring sources are the focus; one-off research is possible through `llm` mode but not

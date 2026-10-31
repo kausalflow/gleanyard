@@ -261,3 +261,20 @@ def test_retention_keeps_last_good_and_collects_garbage(cache):
     assert len(deleted) == 1
     assert cache.get_body(runs[1].responses[0].sha256) == b"good"
     assert cache.get_body(runs[2].responses[0].sha256) == b"new"
+
+
+def test_accept_header_is_sent_only_when_set():
+    site = Site({"https://example.org/events.json": httpx.Response(200, json=[])})
+    sdmx = "application/vnd.sdmx.data+csv;version=1.0.0"
+    fetcher(site, src=source(fetch={"delay_seconds": 0, "accept": sdmx})).get(
+        "https://example.org/events.json"
+    )
+    fetcher(site).get("https://example.org/events.json")
+    accepts = [call.headers.get("accept") for call in site.page_calls()]
+    assert accepts[0] == sdmx and accepts[1] != sdmx
+
+
+@pytest.mark.parametrize("bad", ["text/csv\r\nCookie: x", "a b", ""])
+def test_accept_must_be_a_media_type_list(bad):
+    with pytest.raises(ValueError):
+        source(fetch={"accept": bad})

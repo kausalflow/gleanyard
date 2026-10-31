@@ -182,3 +182,29 @@ def test_lookup_star_reads_every_list_element():
     assert lookup(item, "resources.*.missing") is None
     assert lookup(item, "none.*.x") is None
     assert lookup({"a": {"b": 1}}, "a.*.b") is None  # not a list
+
+
+WIDE = b"surveyDate,gacdisa,nocdisa,other\n2026-09-01,-8.7,ND,1\n2026-10-01,10.7,,2\n"
+
+
+def test_csv_unpivot_gives_one_item_per_listed_column():
+    reader = {
+        "unpivot": {
+            "keep": ["surveyDate"],
+            "columns": {"gacdisa": "business_conditions", "nocdisa": "new_orders"},
+            "name": "indicator",
+        }
+    }
+    assert read_items(source("csv", reader), WIDE) == [
+        {"surveyDate": "2026-09-01", "indicator": "business_conditions", "value": "-8.7"},
+        {"surveyDate": "2026-09-01", "indicator": "new_orders", "value": "ND"},
+        {"surveyDate": "2026-10-01", "indicator": "business_conditions", "value": "10.7"},
+    ]
+
+
+def test_json_unpivot_and_missing_columns():
+    reader = {"unpivot": {"columns": {"a": "A"}, "keep": ["d"]}}
+    body = b'[{"d": 1, "a": 5}, {"d": 2}]'
+    assert read_items(source("json", reader), body) == [{"d": 1, "name": "A", "value": 5}]
+    with pytest.raises(StructureChanged, match="unpivot"):
+        read_items(source("json", reader), b'[{"d": 1, "b": 5}]')
