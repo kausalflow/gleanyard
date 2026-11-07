@@ -4,9 +4,10 @@
 
 Gleanyard collects structured data from recurring web sources into a schema you define.
 
-Gleanyard is early and under active development. The design is in the v2 design doc;
-the package holds only what every collection repo must get right the same way, and
-everything that varies per project lives in that project's own repo.
+Gleanyard is early and under active development. The package holds only what every
+collection repo must get right the same way, and everything that varies per project lives
+in that project's own repo. `gleanyard init` writes such a repo, with scheduled GitHub
+workflows and instructions for an AI assistant.
 
 ## A project repo
 
@@ -39,6 +40,7 @@ Rejected records go to review, never to the output.
 ## Commands
 
 ```sh
+gleanyard init DIR --schema NAME        # a new project repo
 gleanyard validate [PROJECT] [--json]   # check schema and sources, with file:line fixes
 gleanyard json-schema source            # JSON Schema for editors and AI tools
 gleanyard collect [PROJECT] [-s ID] [--from-cache] [--json]
@@ -56,7 +58,13 @@ content-addressed cache with conditional requests, and writes records and
 rejections under `data/`. `--from-cache` re-extracts the last run with no network.
 `export` checks the *current* source rights: a field is exported only if it is in
 `public_fields` and its class is allowed (`fact`, `protected_text`, `image`), and
-`personal` fields are never exported.
+`personal` fields are never exported. The owner's rights review is a suggestion: a pending
+source is collected and exported by its stated tier, and only `rejected` or `blocked` stops
+it (`rights_policy.require_reviewed_permission: true` restores the strict rule). Set
+`export_csv` for a CSV copy, or `export: null` for CSV only.
+
+See the [command line reference](https://kausalflow.github.io/gleanyard/reference/cli/) for
+every command.
 
 ## With an AI assistant
 

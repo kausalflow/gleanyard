@@ -97,6 +97,10 @@ viewer: true
 viewer_rows: 2000            # rows per project in the viewer; the rest are counted
 ```
 
+The viewer reads one JSON lines file. A project whose export is CSV only (`export: null`) or
+split into parts (`export_partition`) has no single file to read, so it shows no viewer;
+point `export_url` at one JSON lines file if it has one.
+
 The export holds only fields each source's rights allow, so the viewer shows nothing the
 project does not already publish. Once the dashboard is on a public Pages site, though,
 anyone can read the export of every watched project, private repos included. Leave `viewer`

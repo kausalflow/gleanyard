@@ -22,6 +22,12 @@ pass or fail.
 7. Open a pull request with `gleanyard try example-events --markdown` as its description, so
    the reviewer spot-checks sample records instead of reading YAML.
 
+A source that is already in the [source registry](registry.md) skips steps 2 to 6:
+`gleanyard search <words>` finds it and `gleanyard add <recipe>` installs it with its mapping,
+fixture and snapshot, disabled and with its rights pending. Read the terms yourself before you
+enable it. With an [AI assistant](agents.md), ask it to set up the URL: the gleanyard skill
+holds these same steps.
+
 The mode that passes first is pinned in the source file. A scheduled run never switches modes
 on its own; a repair that needs another mode is a pull request.
 
