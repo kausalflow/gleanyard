@@ -30,6 +30,8 @@ records, check every one against the schema and write only the records that pass
 ## Where to start
 
 - [Quickstart](quickstart.md): a project with one source, from empty folder to export.
+- [Use without installing](concepts/no-install.md): start from the template repo, set sources
+  up with an assistant in the cloud, or ask the read-only connector from any AI app.
 - [Delivery and extraction](concepts/delivery-and-extraction.md): the two settings every
   source has.
 - [Command line](reference/cli.md): every command.

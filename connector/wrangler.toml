@@ -1,0 +1,9 @@
+# Deploy with: npx wrangler deploy   (from this folder, signed in to your Cloudflare account)
+name = "gleanyard-connector"
+main = "worker.js"
+compatibility_date = "2026-10-01"
+workers_dev = true
+
+[vars]
+# The registry the connector searches. Point it at your own registry to serve that one.
+REGISTRY_URL = "https://kausalflow.github.io/gleanyard-registry/"

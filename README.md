@@ -8,6 +8,10 @@ Gleanyard is early and under active development. The design is in the v2 design 
 the package holds only what every collection repo must get right the same way, and
 everything that varies per project lives in that project's own repo.
 
+**No install:** start from the [template repo](https://github.com/kausalflow/gleanyard-template),
+set sources up with Claude Code on the web or in Codespaces, or ask the read-only connector
+from any AI app. See [Use without installing](https://kausalflow.github.io/gleanyard/concepts/no-install/).
+
 ## A project repo
 
 ```text

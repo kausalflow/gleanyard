@@ -98,6 +98,11 @@ access, in a repo of its own.
   exporting; only `rejected`, the tier `blocked` and non-exportable tiers do.
   `rights_policy.require_reviewed_permission: true` keeps the old fail-closed rule.
 
+- No install (0.14.0): a read-only remote MCP connector for Cloudflare Workers
+  (`connector/`: registry search, a public project's status, records and changes), the
+  gleanyard repo as a GitHub Action, a Codespaces devcontainer in the template, and the
+  template repo kausalflow/gleanyard-template. See [Use without installing](concepts/no-install.md).
+
 ## Decisions so far
 
 - Recurring sources are the focus; one-off research is possible through `llm` mode but not

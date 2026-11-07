@@ -31,6 +31,7 @@ def test_init_creates_a_valid_project(tmp_path):
         ".github/workflows/repair.yml",
         ".github/workflows/research.yml",
         ".claude/skills/gleanyard/SKILL.md",
+        ".devcontainer/devcontainer.json",
         "sources/.gitkeep",
         "mappings/.gitkeep",
         "candidates/.gitkeep",
@@ -92,6 +93,7 @@ def test_template_ships_in_the_built_wheel(tmp_path):
         "dot-github/workflows/research.yml",
         "dot-gitignore",
         "dot-claude/skills/gleanyard/SKILL.md",
+        "dot-devcontainer/devcontainer.json",
         "CLAUDE.md",
     ):
         assert any(name.endswith(f"template/{expected}") for name in names), expected

@@ -25,6 +25,7 @@ nav = [
     { "Automatic repair" = "concepts/auto-repair.md" },
     { "Automatic research" = "concepts/auto-research.md" },
     { "AI assistants" = "concepts/agents.md" },
+    { "Use without installing" = "concepts/no-install.md" },
     { "Status hub" = "concepts/status-hub.md" },
     { "DataHerb catalog" = "concepts/dataherb.md" },
     { "Source registry" = "concepts/registry.md" },
