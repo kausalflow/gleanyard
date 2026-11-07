@@ -23,6 +23,13 @@ rights:
   notes: Free-text evidence for the decision.
 ```
 
+The block takes a few more keys. `license_id` and `license_url` name the licence of an open
+tier, and `attribution_text` is the credit the export carries when `attribution_required` is
+true. `reviewed_at` is the date of the owner's decision (`gleanyard rights review` sets it).
+`collection_basis`, `copyright_class` and `database_rights` are free-text notes on why
+collecting is allowed; they default to `unknown`, and nothing checks them, nor
+`allowed_actions.discover_urls`.
+
 Everything defaults to the safe answer: unknown tier, nothing allowed, nothing public.
 `gleanyard rights review` asks the owner for these values source by source, with suggestions
 from the evidence and the tier, and writes them; see the [command line](../reference/cli.md).

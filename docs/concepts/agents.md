@@ -85,10 +85,12 @@ argument). Claude Desktop, for example, takes this in its `claude_desktop_config
 | `probe` | `gleanyard probe URL --json` | yes |
 | `scaffold` | `gleanyard scaffold URL --id ID --json` (never writes) | yes |
 | `try_source` | `gleanyard try ID --json`, plus the `--markdown` report | yes |
+| `test_fixtures` | `gleanyard test [-s ID] --json` | no |
 | `repair_plan` | `gleanyard repair plan --json` | no |
 | `repair_check` | `gleanyard repair check --json` | yes |
 | `json_schema` | `gleanyard json-schema KIND` | no |
-| `search_records` | text search over `exports/records.jsonl` | no |
+| `search_records` | text search over the public JSON lines export (`exports/records.jsonl` by default) | no |
+| `recent_changes` | the public change feed, `exports/changes.json` | no |
 | `search_registry` | `gleanyard search --json`, recipes in the [source registry](registry.md) | yes |
 | `read_file` | reads `schema.yaml`, `gleanyard.yaml`, `research.md`, `CLAUDE.md` and the review folders | no |
 
@@ -120,6 +122,6 @@ What stays with you:
   refuses a disabled source, so nothing is stored before you have reviewed the rights.
 - The tools change files in the folder; nothing commits, pushes or opens a pull request.
 
-The procedures are also served as prompts (`research`, `set_up_source`, `repair`,
+The procedures are also served as prompts (`research`, `set_up_source`, `repair`, `review_terms`,
 `retire_source`, `add_from_registry`) and the whole skill as the resource `gleanyard://skill`, so a client without
 the skill file still follows the procedures of the installed version.

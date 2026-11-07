@@ -11,6 +11,13 @@ pip install gleanyard
 
 Gleanyard needs Python 3.11 or newer.
 
+!!! tip "Two shortcuts"
+    `gleanyard init my-events --schema event` writes a whole project repo, with scheduled
+    workflows and instructions for an AI assistant; see [the repo template](concepts/repo-template.md).
+    If a working source for your site is already in the public registry, `gleanyard add`
+    installs it; see [the source registry](concepts/registry.md). This page builds the same
+    pieces by hand, so you see what each one does.
+
 ## Lay out the project
 
 A project is a folder, usually a git repo:
@@ -70,8 +77,9 @@ rights:
     normalize: true
 ```
 
-An enabled source must allow `private_store` and `normalize`; until you have reviewed a
-source's terms, keep it `enabled: false`.
+`internal_only` keeps the records to yourself: they are collected but never exported. Read
+the site's terms before you collect, and keep the source `enabled: false` until you have.
+`gleanyard rights review` asks you for the rights source by source and writes them.
 
 ## Check it
 
@@ -111,6 +119,15 @@ network, for example after you change the mapping.
 gleanyard export
 ```
 
-This writes `exports/records.jsonl`. Nothing is exported until the source's rights allow it:
-the source must be approved, its tier exportable, and each field listed in `public_fields`.
-See [Rights and export](concepts/rights.md).
+This writes `exports/records.jsonl`. Only what the source's rights allow goes out: its tier
+must be exportable, and only fields listed in `public_fields` are written. With the
+`internal_only` tier above the export stays empty; set `effective_tier: facts_only`, allow
+`redistribute_facts` and list `public_fields` once the terms allow it. Set `export_csv` in
+`gleanyard.yaml` for a CSV copy, or `export: null` to write only the CSV. See
+[Rights and export](concepts/rights.md) and the [`gleanyard.yaml` keys](reference/cli.md#gleanyardyaml).
+
+## Next steps
+
+- Run it on a schedule: [the repo template](concepts/repo-template.md).
+- Know when a source breaks: [health and status.json](concepts/status.md).
+- Hand setup and repair to an AI assistant: [AI assistants](concepts/agents.md).
