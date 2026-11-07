@@ -9,6 +9,10 @@ collection repo must get right the same way, and everything that varies per proj
 in that project's own repo. `gleanyard init` writes such a repo, with scheduled GitHub
 workflows and instructions for an AI assistant.
 
+**No install:** start from the [template repo](https://github.com/kausalflow/gleanyard-template),
+set sources up with Claude Code on the web or in Codespaces, or ask the read-only connector
+from any AI app. See [Use without installing](https://kausalflow.github.io/gleanyard/concepts/no-install/).
+
 ## A project repo
 
 ```text

@@ -8,7 +8,7 @@ and how it maps onto your schema. Scheduled runs then fetch the source politely,
 records, check every one against the schema and write only the records that pass.
 
 !!! note "Early release"
-    Gleanyard is young and changes quickly; pin a minor version (`gleanyard~=0.13.0`) in your
+    Gleanyard is young and changes quickly; pin a minor version (`gleanyard~=0.14.0`) in your
     project. Everything below is released; see the [roadmap](roadmap.md) for what came when.
 
 ## What it does
@@ -50,6 +50,8 @@ records, check every one against the schema and write only the records that pass
 - [Quickstart](quickstart.md): a project with one source, from empty folder to export.
 - [The repo template](concepts/repo-template.md): `gleanyard init` and the scheduled
   workflows, for a project that runs on its own.
+- [Use without installing](concepts/no-install.md): start from the template repo, set sources
+  up with an assistant in the cloud, or ask the read-only connector from any AI app.
 - [Delivery and extraction](concepts/delivery-and-extraction.md): the two settings every
   source has.
 - [AI assistants](concepts/agents.md): set up sources by asking Claude, without learning the

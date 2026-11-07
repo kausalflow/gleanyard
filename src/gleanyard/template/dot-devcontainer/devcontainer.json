@@ -1,0 +1,17 @@
+{
+  "name": "{{project}}",
+  "image": "mcr.microsoft.com/devcontainers/python:3.12",
+  "features": {
+    "ghcr.io/devcontainers/features/node:1": {},
+    "ghcr.io/anthropics/devcontainer-features/claude-code:1": {}
+  },
+  "postCreateCommand": "pip install --user 'gleanyard[mcp]~=0.14.0' && (claude mcp add gleanyard -- gleanyard mcp --allow-writes || true) && gleanyard validate",
+  "customizations": {
+    "codespaces": {
+      "openFiles": ["research.md", "schema.yaml"]
+    },
+    "vscode": {
+      "extensions": ["redhat.vscode-yaml", "anthropic.claude-code"]
+    }
+  }
+}

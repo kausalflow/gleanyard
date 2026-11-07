@@ -8,6 +8,15 @@ trusted publishing; there is no API token.
 3. The **Publish to PyPI** workflow builds the package and uploads it. It fails if the tag
    and the version differ.
 
+After a release:
+
+- **Template repo.** Refresh [kausalflow/gleanyard-template](https://github.com/kausalflow/gleanyard-template)
+  with a pull request that replaces its files with the output of
+  `gleanyard init <dir> --name my-collection --schema record` (keep `.git`). Actions stay
+  disabled in the template repo itself, so its schedule never runs there.
+- **Connector.** If `connector/` changed, deploy it: `cd connector && npx wrangler deploy`.
+- **Action.** Nothing to do: `uses: kausalflow/gleanyard@v<version>` works from the tag.
+
 ## Working on gleanyard
 
 ```sh

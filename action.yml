@@ -1,0 +1,71 @@
+name: gleanyard
+description: Run gleanyard commands (validate, test, collect, export, status) in a workflow, with no setup of your own.
+author: kausalflow
+branding:
+  icon: database
+  color: green
+inputs:
+  run:
+    description: >-
+      gleanyard commands to run, one per line, without the leading `gleanyard`
+      (for example `validate` and `test`). Each runs in `working-directory`.
+    required: false
+    default: validate
+  working-directory:
+    description: The project folder.
+    required: false
+    default: .
+  version:
+    description: >-
+      The gleanyard package to install, as a pip version specifier such as `~=0.14.0`.
+      Empty installs the version of this action's own ref.
+    required: false
+    default: ""
+  extras:
+    description: Optional extras to install, comma-separated (for example `llm`).
+    required: false
+    default: ""
+  python-version:
+    description: Python version for setup-python.
+    required: false
+    default: "3.12"
+outputs:
+  version:
+    description: The gleanyard version that ran.
+    value: ${{ steps.install.outputs.version }}
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-python@v5
+      with:
+        python-version: ${{ inputs.python-version }}
+    - id: install
+      shell: bash
+      env:
+        SPEC: ${{ inputs.version }}
+        EXTRAS: ${{ inputs.extras }}
+        ACTION_PATH: ${{ github.action_path }}
+      run: |
+        extras=""
+        if [ -n "$EXTRAS" ]; then extras="[$EXTRAS]"; fi
+        if [ -n "$SPEC" ]; then
+          python -m pip install --quiet "gleanyard${extras}${SPEC}"
+        else
+          python -m pip install --quiet "gleanyard${extras} @ file://${ACTION_PATH}"
+        fi
+        echo "version=$(python -c 'import importlib.metadata as m; print(m.version("gleanyard"))')" >> "$GITHUB_OUTPUT"
+    - shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      env:
+        COMMANDS: ${{ inputs.run }}
+      run: |
+        set -f
+        while IFS= read -r line; do
+          line="${line#"${line%%[![:space:]]*}"}"
+          [ -z "$line" ] && continue
+          line="${line#gleanyard }"
+          echo "::group::gleanyard $line"
+          # word splitting is intended: the line is a command and its arguments
+          gleanyard $line
+          echo "::endgroup::"
+        done <<< "$COMMANDS"

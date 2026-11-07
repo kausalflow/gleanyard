@@ -23,6 +23,10 @@ of its own: it sends the assistant to the project's `CLAUDE.md` and its versione
 the procedures always match the gleanyard version the project pins. In a folder without a
 project, it offers `gleanyard init`.
 
+To use gleanyard from claude.ai, ChatGPT or another AI app with nothing installed, see
+[Use without installing](no-install.md): it covers the read-only connector and setting
+sources up with Claude Code on the web.
+
 Nothing here runs on a server of ours. The plugin is a few files in the repo, the server runs
 on your computer, and pages are fetched from there.
 
