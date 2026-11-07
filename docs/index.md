@@ -8,7 +8,7 @@ and how it maps onto your schema. Scheduled runs then fetch the source politely,
 records, check every one against the schema and write only the records that pass.
 
 !!! note "Early release"
-    Gleanyard is young and changes quickly; pin a minor version (`gleanyard~=0.13.0`) in your
+    Gleanyard is young and changes quickly; pin a minor version (`gleanyard~=0.14.0`) in your
     project. Everything below is released; see the [roadmap](roadmap.md) for what came when.
 
 ## What it does
