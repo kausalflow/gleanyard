@@ -19,8 +19,7 @@ source `filter` guards URL filters and raises `filter_ignored` when the source s
 ## 3. Project template (done)
 
 Done: the commands that turn setup into checks (`probe`, `check`, `scaffold`, `try`) and
-`gleanyard init`, which writes the repo template. 
-A repo template whose `CLAUDE.md` tells an AI assistant how to research sources, set one up
+`gleanyard init`, which writes a repo template whose `CLAUDE.md` tells an AI assistant how to research sources, set one up
 (trying extraction modes in order and pinning the first that passes), and repair it when
 health checks fail. Every change arrives as a pull request. `gleanyard map` drafts selector
 mappings with crawl4ai at setup and repair only; crawl4ai never runs in scheduled collection.
@@ -30,8 +29,7 @@ mappings with crawl4ai at setup and repair only; crawl4ai never runs in schedule
 Done: `gleanyard hub run` reads the projects and keeps one issue per active problem,
 `hub build` renders the dashboard and a job summary, `hub init` writes the hub repo, and
 `hub check` says what its setup is missing. Projects are listed, found by topic, or read from a
-status.json URL with no token. 
-A central repo that reads each project's `status.json`, publishes a dashboard on GitHub
+status.json URL with no token. The hub is a central repo that reads each project's `status.json`, publishes a dashboard on GitHub
 Pages, and opens GitHub issues on changes: a source starts failing, record counts drop, a
 scheduled run is missed, or a setup or repair PR waits too long.
 
@@ -71,24 +69,23 @@ access, in a repo of its own.
   registry repo checks recipes by replaying fixtures offline (`gleanyard registry check`),
   builds a static site for Pages (`registry build`), and shows each recipe's health from the
   public `status.json` of the projects that use it, so it costs nothing to run.
+- Feeds and rights (0.8.1, 0.8.2): an RSS reader `include` keeps only items whose title or
+  text match, and `gleanyard rights review` asks the owner for each pending source's rights
+  and writes them.
 - AI apps (0.9.0): a Claude Code plugin, installed from the gleanyard repo's own
   marketplace, brings the skill and the MCP server; `gleanyard mcp --allow-writes` adds
   write tools for clients without a shell, which never enable a source or approve rights.
-
 - Grouped pages and CSV (0.10.0): `explode` turns each element of a list in an item into its
   own record, selector fields can `split` text into lists, and `export_csv` writes the export
   as CSV too, listed in `dataherb.json`. Found while moving DataHerb's dataset scrapers onto
   gleanyard.
-
 - Statistics APIs (0.11.0): `cases` set fields from an item's codes, `rewrite` fixes a value's
-  format, `unpivot` turns wide
-  CSV and JSON rows into one item per column, and `fetch.accept` asks an API for a format.
+  format, `unpivot` turns wide CSV and
+  JSON rows into one item per column, and `fetch.accept` asks an API for a format.
   The first part of moving DataHerb's economic indicators onto gleanyard.
-
 - Large statistics (0.12.0): `prefer.series` keeps each series from one source,
   `keep_removed` keeps history a source no longer publishes, `storage.records: compact`
   shrinks stored records, and `export_partition` splits the export into files per value.
-
 - Lookup tables (0.13.0): `join` adds columns from a CSV file in the repo (country names by
   code), `where` leaves out items by a regex, a `map` entry can list fallback keys, and the
   partitioned CSV is also written whole, with its parts in `export_csv_parts`.

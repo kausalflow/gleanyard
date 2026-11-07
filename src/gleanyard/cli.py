@@ -450,7 +450,7 @@ def map_command(
     force: Annotated[bool, typer.Option("--force", help="Replace an existing mapping.")] = False,
     dry_run: Annotated[bool, typer.Option("--dry-run", help="Report without writing.")] = False,
 ) -> None:
-    """Draft or repair a source's selector mapping with crawl4ai (needs gleanyard[map])."""
+    """Draft or repair a source's selector mapping with crawl4ai (needs gleanyard\\[map])."""
     project = load_project(root)
     # A mapping that does not exist yet is exactly what `map` is for.
     issues = [
@@ -602,7 +602,7 @@ def mcp_command(
         ),
     ] = False,
 ) -> None:
-    """Serve the project's commands as MCP tools over stdio (needs gleanyard[mcp])."""
+    """Serve the project's commands as MCP tools over stdio (needs gleanyard\\[mcp])."""
     try:
         from gleanyard.mcp_server import build_server
     except ImportError as error:
