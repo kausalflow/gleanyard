@@ -68,3 +68,9 @@ def test_connector_offline_tests_pass():
         [node, str(ROOT / "connector" / "test.mjs")], capture_output=True, text=True
     )
     assert result.returncode == 0, result.stderr + result.stdout
+
+
+def test_registry_entry_follows_the_package():
+    entry = json.loads((ROOT / "connector" / "server.json").read_text())
+    assert entry["version"] == __version__
+    assert entry["remotes"][0]["url"].endswith("/mcp")

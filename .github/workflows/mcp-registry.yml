@@ -1,0 +1,29 @@
+name: MCP Registry
+
+# Publishes connector/server.json to the official MCP Registry
+# (https://registry.modelcontextprotocol.io/) on each release, or by hand. GitHub's OIDC
+# token proves the repo belongs to kausalflow, so no secret is needed.
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    defaults:
+      run:
+        working-directory: connector
+    steps:
+      - uses: actions/checkout@v5
+      - name: Install mcp-publisher
+        run: |
+          curl -sSfL https://github.com/modelcontextprotocol/registry/releases/latest/download/mcp-publisher_linux_amd64.tar.gz \
+            | tar xz mcp-publisher
+      - run: ./mcp-publisher login github-oidc
+      - run: ./mcp-publisher publish

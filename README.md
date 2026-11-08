@@ -1,17 +1,53 @@
 # gleanyard
 
-**Documentation: https://kausalflow.github.io/gleanyard/**
+**An AI assistant writes the scraper once. Then it runs on a schedule without a model,
+checks every record against your schema, watches itself, and opens a repair pull request
+when a site changes.**
 
-Gleanyard collects structured data from recurring web sources into a schema you define.
+[Docs](https://kausalflow.github.io/gleanyard/) ·
+[Use this template](https://github.com/kausalflow/gleanyard-template/generate) ·
+[Source registry](https://kausalflow.github.io/gleanyard-registry/) ·
+[Live example](https://github.com/kausalflow/berlin-family-events)
 
-Gleanyard is early and under active development. The package holds only what every
-collection repo must get right the same way, and everything that varies per project lives
-in that project's own repo. `gleanyard init` writes such a repo, with scheduled GitHub
-workflows and instructions for an AI assistant.
+Gleanyard collects structured data from recurring web sources (calendars, feeds, JSON APIs,
+web pages) into a schema you define, in a GitHub repo you own.
 
-**No install:** start from the [template repo](https://github.com/kausalflow/gleanyard-template),
-set sources up with Claude Code on the web or in Codespaces, or add the read-only connector
-`https://gleanyard-connector.leima.workers.dev/mcp` to any AI app. See [Use without installing](https://kausalflow.github.io/gleanyard/concepts/no-install/).
+1. **Describe what you want.** `schema.yaml` lists the fields of one record; `research.md`
+   says what to look for.
+2. **Let an assistant set sources up.** It finds candidates, reads each site's terms,
+   writes one small config file per source, tries the extraction modes in order and pins
+   the first that passes. Every change arrives as a pull request you review.
+3. **Scheduled runs need no model.** GitHub Actions collect, validate every record and
+   commit the data, a rights-filtered export and `status.json`. A source that breaks or
+   goes quiet opens an issue, and an opt-in workflow drafts the fix as a pull request.
+
+[kausalflow/berlin-family-events](https://github.com/kausalflow/berlin-family-events) runs
+this way: three Berlin family event calendars, collected daily into one schema.
+
+## Try it without installing anything
+
+- **Start a project:** [use the template](https://github.com/kausalflow/gleanyard-template/generate),
+  then open it in [Claude Code on the web](https://claude.ai/code) or a Codespace and ask
+  it to research sources.
+- **Ask from any AI app:** add `https://gleanyard-connector.leima.workers.dev/mcp` as a
+  custom connector in claude.ai, ChatGPT or another MCP client. It searches the source
+  registry and reads public projects' records and health, read-only.
+- **In your own workflows:** `uses: kausalflow/gleanyard@v0.14.0`.
+
+See [Use without installing](https://kausalflow.github.io/gleanyard/concepts/no-install/).
+With Python: `pip install gleanyard && gleanyard init my-project`; in Claude Code:
+`/plugin install gleanyard --marketplace kausalflow/gleanyard`.
+
+## Why it looks like this
+
+- **AI at setup and repair only.** Feeds and pages are mapped once; scheduled runs are
+  deterministic, cheap and reviewable.
+- **One schema is the contract.** A record that fails validation goes to review, never to
+  the output.
+- **Rights are part of the config.** Each source records what you may store and publish,
+  with the terms you read as evidence; the export re-checks it on every run.
+- **Polite by default.** robots.txt, request delays, byte and request limits, conditional
+  requests and a raw cache; no evasion of bot protection.
 
 ## A project repo
 
