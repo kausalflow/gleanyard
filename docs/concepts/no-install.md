@@ -63,7 +63,7 @@ The gleanyard connector is a remote MCP server. Add its URL as a custom connecto
 claude.ai, ChatGPT, Claude Desktop or any client that speaks MCP over HTTP:
 
 ```text
-https://gleanyard-connector.<account>.workers.dev/mcp
+https://gleanyard-connector.leima.workers.dev/mcp
 ```
 
 | Tool | What it reads |
