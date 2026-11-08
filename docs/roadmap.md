@@ -99,6 +99,9 @@ access, in a repo of its own.
   (`connector/`: registry search, a public project's status, records and changes), the
   gleanyard repo as a GitHub Action, a Codespaces devcontainer in the template, and the
   template repo kausalflow/gleanyard-template. See [Use without installing](concepts/no-install.md).
+- The hub reads DataHerb job statuses (0.14.0): a `dataherb.status/v1` file, listed by URL
+  or as `{repo, status_path}`, becomes a project on the dashboard with its checks as sources,
+  so DataHerb datasets that are not gleanyard projects get the same alerts.
 
 ## Decisions so far
 

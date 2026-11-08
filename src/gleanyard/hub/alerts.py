@@ -113,6 +113,7 @@ DEGRADED_TITLES = {
     "fill_rate_drop": "fields stopped filling",
     "rejection_spike": "more records rejected",
     "unchanged": "data stopped changing",
+    "warning": "has a warning",
 }
 
 

@@ -29,7 +29,8 @@ from gleanyard.run import SourceRun
 from gleanyard.terms import TermsState
 
 Health = Literal["ok", "degraded", "failing", "disabled"]
-CheckKind = Literal["record_drop", "fill_rate_drop", "rejection_spike", "unchanged"]
+# ``warning`` is never written by gleanyard: the hub uses it for another producer's warnings.
+CheckKind = Literal["record_drop", "fill_rate_drop", "rejection_spike", "unchanged", "warning"]
 
 MIN_RECORDS = 10  # smaller sources swing too much for count and fill-rate checks
 DROP_RATIO = 0.75  # a run with over 25% fewer records than the last good one is "degraded"

@@ -12,6 +12,7 @@ from pydantic import BaseModel, Field
 
 from gleanyard.hub.config import HubConfig, Watched
 from gleanyard.hub.github import GitHub, PullRequest
+from gleanyard.hub.reports import parse_report
 from gleanyard.status import ProjectStatus
 
 Fetch = Callable[[str], bytes]
@@ -27,7 +28,7 @@ class ExportSample(BaseModel):
 
 class RepoState(BaseModel):
     repo: str = Field(description="The project's name: owner/name, or the name given to a URL.")
-    url: str | None = Field(default=None, description="Set when status.json came from a URL.")
+    url: str | None = Field(default=None, description="Set when the report came from a URL.")
     status: ProjectStatus | None = None
     problem: str | None = Field(default=None, description="Why no usable status.json was read.")
     pulls: list[PullRequest] = Field(default_factory=list)
@@ -108,8 +109,8 @@ def read_project(
         where = item.url
     else:
         assert item.repo is not None and github is not None, "a repo needs the GitHub API"
-        body = github.get_file(item.repo, config.status_path)
-        where = config.status_path
+        where = item.status_path or config.status_path
+        body = github.get_file(item.repo, where)
         state.pulls = [
             pull
             for pull in github.open_pulls(item.repo)
@@ -119,7 +120,7 @@ def read_project(
         state.problem = f"{where} not found, or the repo is not readable"
     else:
         try:
-            state.status = ProjectStatus.model_validate_json(body)
+            state.status = parse_report(body)
         except ValueError as error:
             state.problem = f"{where} is not a valid report: {error}"
     if config.viewer:

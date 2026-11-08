@@ -3,8 +3,10 @@
 A watched project is one of:
 
 - ``owner/name``: read ``status.json`` and its open pull requests through the GitHub API;
-- a URL to a ``status.json`` (a raw file, a Pages site, any static host): fetched without a
-  GitHub token, so no pull request alerts;
+- ``{repo: owner/name, status_path: ...}``: the same, with the report at another path, such
+  as a DataHerb job status (``_dataherb/status/<id>/latest.json``);
+- a URL to a ``status.json`` or a DataHerb job status (a raw file, a Pages site, any static
+  host): fetched without a GitHub token, so no pull request alerts;
 - found by ``discover``: every repo of an owner with a topic (``gleanyard`` by default).
 """
 
@@ -36,6 +38,20 @@ class StatusUrl(StrictModel):
     )
 
 
+class StatusRepo(StrictModel):
+    """A GitHub repo whose report is not at the hub's ``status_path``."""
+
+    repo: str = Field(pattern=REPO, description="The project repo as owner/name.")
+    status_path: str = Field(
+        min_length=1,
+        description=(
+            "Path of its report in the repo: a status.json, or a DataHerb job status such as "
+            "_dataherb/status/<id>/latest.json."
+        ),
+    )
+    name: str | None = Field(default=None, description="How it is shown; owner/name if unset.")
+
+
 class Discover(StrictModel):
     owner: str = Field(pattern=OWNER, description="GitHub user or organization to search.")
     topic: str = Field(default="gleanyard", description="Repos with this topic are watched.")
@@ -48,6 +64,7 @@ class Watched(StrictModel):
     repo: str | None = None
     url: str | None = None
     export_url: str | None = None
+    status_path: str | None = None
 
 
 def url_name(url: str) -> str:
@@ -63,9 +80,12 @@ def url_name(url: str) -> str:
 
 class HubConfig(StrictModel):
     schema_version: int = 1
-    repos: list[str | StatusUrl] = Field(
+    repos: list[str | StatusUrl | StatusRepo] = Field(
         default_factory=list,
-        description="Projects as owner/name, a status.json URL, or {name, url}.",
+        description=(
+            "Projects as owner/name, a report URL, {name, url}, or {repo, status_path}. A "
+            "report is a gleanyard status.json or a DataHerb job status (dataherb.status/v1)."
+        ),
     )
     discover: Discover | None = Field(
         default=None, description="Also watch every repo of an owner that has a topic."
@@ -98,7 +118,9 @@ class HubConfig(StrictModel):
 
     @field_validator("repos")
     @classmethod
-    def check_repos(cls, repos: list[str | StatusUrl]) -> list[str | StatusUrl]:
+    def check_repos(
+        cls, repos: list[str | StatusUrl | StatusRepo]
+    ) -> list[str | StatusUrl | StatusRepo]:
         bad = [
             repo
             for repo in repos
@@ -106,7 +128,14 @@ class HubConfig(StrictModel):
         ]
         if bad:
             raise ValueError(f"not owner/name or an http(s) URL: {', '.join(bad)}")
-        keys = [repo if isinstance(repo, str) else repo.url for repo in repos]
+        keys = [
+            repo
+            if isinstance(repo, str)
+            else repo.url
+            if isinstance(repo, StatusUrl)
+            else repo.repo
+            for repo in repos
+        ]
         if len(set(keys)) != len(keys):
             raise ValueError("a repo is listed twice")
         return repos
@@ -123,6 +152,12 @@ class HubConfig(StrictModel):
         for repo in self.repos:
             if isinstance(repo, StatusUrl):
                 watched.append(Watched(name=repo.name, url=repo.url, export_url=repo.export_url))
+            elif isinstance(repo, StatusRepo):
+                watched.append(
+                    Watched(
+                        name=repo.name or repo.repo, repo=repo.repo, status_path=repo.status_path
+                    )
+                )
             elif _is_url(repo):
                 watched.append(Watched(name=url_name(repo), url=repo))
             else:

@@ -13,7 +13,7 @@ import httpx
 from pydantic import BaseModel
 
 from gleanyard.errors import ConfigError
-from gleanyard.hub.config import HubConfig, load_hub_config
+from gleanyard.hub.config import HubConfig, StatusRepo, load_hub_config
 from gleanyard.hub.github import GitHub
 from gleanyard.hub.state import Fetch, fetch_url, read_project, watched_projects
 
@@ -65,6 +65,8 @@ def check_hub(
 
 
 def _is_repo(entry: object) -> bool:
+    if isinstance(entry, StatusRepo):
+        return True
     return isinstance(entry, str) and not entry.startswith(("http://", "https://"))
 
 
@@ -117,7 +119,7 @@ def _projects(
             )
             continue
         fix = (
-            "check that the URL is public and points at status.json"
+            "check that the URL is public and points at status.json or a DataHerb job status"
             if item.url
             else "give the token read access to its contents and pull requests, run its "
             "`collect` workflow once, or list its status.json URL instead"
