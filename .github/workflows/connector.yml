@@ -1,0 +1,38 @@
+name: Deploy connector
+
+# Deploys connector/ to Cloudflare Workers. Runs only when the connector changes on main,
+# or by hand. Needs the repository secrets CLOUDFLARE_API_TOKEN (template "Edit Cloudflare
+# Workers") and CLOUDFLARE_ACCOUNT_ID; without them the run does nothing.
+on:
+  push:
+    branches: [main]
+    paths: ["connector/**", ".github/workflows/connector.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: connector
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      HAS_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN != '' }}
+    steps:
+      - if: env.HAS_TOKEN != 'true'
+        run: echo "::notice::CLOUDFLARE_API_TOKEN is not set; skipping the deploy."
+      - if: env.HAS_TOKEN == 'true'
+        uses: actions/checkout@v5
+      - if: env.HAS_TOKEN == 'true'
+        run: node connector/test.mjs
+      - if: env.HAS_TOKEN == 'true'
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: connector
+          command: deploy

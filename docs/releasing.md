@@ -14,7 +14,8 @@ After a release:
   with a pull request that replaces its files with the output of
   `gleanyard init <dir> --name my-collection --schema record` (keep `.git`). Actions stay
   disabled in the template repo itself, so its schedule never runs there.
-- **Connector.** If `connector/` changed, deploy it: `cd connector && npx wrangler deploy`.
+- **Connector.** Nothing to do: the **Deploy connector** workflow deploys it when `connector/`
+  changes on `main` (secrets `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`).
 - **Action.** Nothing to do: `uses: kausalflow/gleanyard@v<version>` works from the tag.
 
 ## Working on gleanyard
