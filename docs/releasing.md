@@ -16,10 +16,10 @@ After a release:
   disabled in the template repo itself, so its schedule never runs there.
 - **Connector.** Nothing to do: the **Deploy connector** workflow deploys it when `connector/`
   changes on `main` (secrets `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`).
-- **MCP Registry.** `connector/server.json` is the connector's entry in the
-  [official MCP Registry](https://registry.modelcontextprotocol.io/); its version follows the
-  package. To publish or update it: `cd connector && mcp-publisher login github && mcp-publisher publish`
-  (as a member of kausalflow).
+- **MCP Registry.** Nothing to do: the **MCP Registry** workflow publishes
+  `connector/server.json` (its version follows the package) to the
+  [official MCP Registry](https://registry.modelcontextprotocol.io/) on each release. Run it by
+  hand from the Actions tab for the first listing.
 - **Action.** Nothing to do: `uses: kausalflow/gleanyard@v<version>` works from the tag.
 
 ## Working on gleanyard
