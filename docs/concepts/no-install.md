@@ -98,6 +98,11 @@ npx wrangler deploy
 
 `node connector/test.mjs` runs its tests offline.
 
+In a fork or copy of the gleanyard repo, the **Deploy connector** workflow deploys it for you
+whenever `connector/` changes on `main`: add the repository secrets `CLOUDFLARE_API_TOKEN` (a
+token from the template "Edit Cloudflare Workers") and `CLOUDFLARE_ACCOUNT_ID`. Without them
+the workflow does nothing.
+
 ## The GitHub Action
 
 The gleanyard repo is also an Action. It installs the gleanyard version of the ref you use
