@@ -43,6 +43,7 @@ from gleanyard.registry.install import search as search_index
 from gleanyard.registry.model import DEFAULT_REGISTRY
 from gleanyard.repair import check_repair, plan_repair
 from gleanyard.replay import FIXTURES, fixture_path, replay_project
+from gleanyard.research import Candidate
 from gleanyard.run import collect_source, export_files, export_location
 from gleanyard.scaffold import scaffold as scaffold_url
 from gleanyard.schema import ProjectSchema
@@ -50,7 +51,12 @@ from gleanyard.skill import checklist, procedures, skill_text
 from gleanyard.status import build_status, load_status, write_status
 from gleanyard.tryout import try_source as run_try
 
-SCHEMAS = {"source": SourceConfig, "schema": ProjectSchema, "project": ProjectConfig}
+SCHEMAS = {
+    "source": SourceConfig,
+    "schema": ProjectSchema,
+    "project": ProjectConfig,
+    "candidate": Candidate,
+}
 SEARCH_LIMIT = 100
 READ_LIMIT = 200_000
 WRITABLE = ("sources", "mappings", "candidates", "evidence", "tests/fixtures")
@@ -241,7 +247,7 @@ def build_server(root: Path, *, writes: bool = False) -> MCPServer:
     @server.tool(annotations=LOCAL)
     @reported
     def json_schema(kind: str) -> dict[str, Any]:
-        """The JSON Schema of a config file: source, schema or project."""
+        """The JSON Schema of a config file: source, schema, project or candidate."""
         if kind not in SCHEMAS:
             raise ValueError(f"choose one of: {', '.join(SCHEMAS)}")
         return SCHEMAS[kind].model_json_schema(by_alias=True)

@@ -36,7 +36,7 @@ from gleanyard.registry.pack import pack_source
 from gleanyard.registry.site import build_index, check_registry, write_site
 from gleanyard.repair import check_repair, plan_repair
 from gleanyard.replay import replay_project
-from gleanyard.research import MAX_CANDIDATES, check_research
+from gleanyard.research import MAX_CANDIDATES, Candidate, check_research
 from gleanyard.review import (
     OPEN_TIERS,
     decide,
@@ -82,6 +82,7 @@ JSON_SCHEMAS = {
     "source": SourceConfig,
     "schema": ProjectSchema,
     "project": ProjectConfig,
+    "candidate": Candidate,
 }
 
 
@@ -122,7 +123,7 @@ def validate(root: ProjectDir = Path("."), as_json: JsonFlag = False) -> None:
 
 @app.command("json-schema")
 def json_schema(
-    kind: Annotated[str, typer.Argument(help="source, schema or project.")],
+    kind: Annotated[str, typer.Argument(help="source, schema, project or candidate.")],
 ) -> None:
     """Print the JSON Schema for a config file, for editors and AI tools."""
     model = JSON_SCHEMAS.get(kind)
@@ -1176,5 +1177,7 @@ def research_check(
             typer.echo(f"  {'ok' if not item.problems else 'FAIL':4}  {item.path}")
             for problem in item.problems:
                 typer.echo(f"        {problem}")
+        for note in result.notes:
+            typer.echo(f"  note: {note}")
     if not result.proposable:
         raise typer.Exit(1)
