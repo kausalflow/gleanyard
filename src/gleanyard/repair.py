@@ -189,6 +189,12 @@ def check_repair(
     """Judge the working tree's changes against ``base`` as an automated repair."""
     project = load_project(root)
     result = RepairCheck(base=base)
+    if unborn(project.root, base):
+        result.problems.append(
+            "no commit yet: a repair is judged against the last committed project, "
+            "so commit the project first"
+        )
+        return result
     changes = changed_files(project.root, base)
     if not changes:
         result.problems.append("nothing changed")
@@ -267,8 +273,27 @@ def compare_with_baseline(report: TryReport, entry: SourceStatus | None) -> list
     return problems
 
 
+def unborn(root: Path, base: str) -> bool:
+    """Whether ``base`` is ``HEAD`` in a repository that has no commit yet."""
+    if base != "HEAD":
+        return False
+    try:
+        _git(root, "rev-parse", "--verify", "--quiet", "HEAD^{commit}")
+    except RuntimeError:
+        _git(root, "rev-parse", "--git-dir")  # not a repository: say so, not "no commit"
+        return True
+    return False
+
+
 def changed_files(root: Path, base: str) -> list[Change]:
-    """Tracked changes against ``base`` plus untracked files, as repo-relative paths."""
+    """Tracked changes against ``base`` plus untracked files, as repo-relative paths.
+
+    Before the first commit there is nothing to compare with, so every file is new.
+    """
+    if unborn(root, base):
+        staged = _git(root, "ls-files", "--cached").splitlines()
+        others = _git(root, "ls-files", "--others", "--exclude-standard").splitlines()
+        return [Change(path=path, status="A") for path in sorted({*staged, *others})]
     diff = _git(root, "diff", "--name-status", "--no-renames", base, "--")
     changes = []
     for line in diff.splitlines():

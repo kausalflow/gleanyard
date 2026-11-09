@@ -34,7 +34,7 @@ gleanyard research check                   # may the new candidates become a res
 gleanyard search [QUERY]                   # recipes in the public source registry
 gleanyard add RECIPE [--id ID]             # install one: disabled, rights pending
 gleanyard rights review                    # the owner's rights decision (interactive)
-gleanyard json-schema source               # exact shape of a source file
+gleanyard json-schema source               # exact shape of a source file (or candidate)
 gleanyard skill                            # refresh this file after upgrading gleanyard
 ```
 
@@ -53,7 +53,8 @@ workflow is turned on, it runs this procedure unattended and opens the PR.
    API) over an HTML page.
 2. For each URL run `gleanyard check URL`; skip hosts that are sources, candidates or excluded.
 3. Run `gleanyard probe URL`. Write `candidates/<host>.yaml` with `url`, `why`, the best probe
-   option, and the legal pages the probe found.
+   option (`option`), and the legal pages the probe found (`legal_pages`);
+   `gleanyard json-schema candidate` gives the exact shape.
 4. Check with `gleanyard research check`: new candidate files only, one per host, none for a
    source or excluded host. Open one PR with the new candidates. Do not set anything up yet.
 

@@ -93,3 +93,70 @@ def test_cli_exit_codes_and_json(repo):
     data = json.loads(result.stdout)
     assert data["proposable"] and data["files"] == ["candidates/new.example.yaml"]
     assert "Research check: **ready for review**" in data["markdown"]
+
+
+@pytest.fixture
+def new_repo(tmp_path):
+    """A project in a repository with no commit yet, as after `gleanyard init` in a new clone."""
+    root = make_project(
+        tmp_path / "n",
+        {
+            "delivery": "json",
+            "url": "https://known.example/api",
+            "extract": {"mode": "fields", "map": {"title": "name", "source_url": "url"}},
+        },
+    )
+    (root / "candidates").mkdir()
+    git(root, "init", "-q")
+    return root
+
+
+def test_before_the_first_commit_every_file_is_new(new_repo):
+    candidate(new_repo, "new.example")
+    candidate(new_repo, "known.example")
+    git(new_repo, "add", "schema.yaml")  # staged or not, nothing is committed yet
+    result = check_research(new_repo)
+    assert result.problems == []
+    assert {item.path: item.problems for item in result.candidates} == {
+        "candidates/known.example.yaml": ["known.example is already a source: s"],
+        "candidates/new.example.yaml": [],
+    }
+    assert "no commit yet" in result.notes[0]
+    (new_repo / "candidates" / "known.example.yaml").unlink()
+    cli = runner.invoke(app, ["research", "check", str(new_repo)])
+    assert cli.exit_code == 0, cli.output
+    assert "note: no commit yet" in cli.output
+
+
+def test_before_the_first_commit_candidates_are_still_needed(new_repo):
+    result = check_research(new_repo)
+    assert not result.proposable
+    assert result.problems == ["no new candidates/<host>.yaml files"]
+
+
+def test_repair_check_needs_a_first_commit(new_repo):
+    from gleanyard.repair import check_repair
+
+    result = check_repair(new_repo)
+    assert not result.proposable
+    assert "no commit yet" in result.problems[0]
+
+
+def test_outside_a_repository_git_says_so(tmp_path):
+    root = make_project(tmp_path / "x", {"delivery": "json", "url": "https://a.example/"})
+    with pytest.raises(RuntimeError, match="not a git repository"):
+        check_research(root)
+
+
+def test_candidate_shape(repo):
+    candidate(repo, "a.example", legal_pages="https://a.example/impressum", recipe=["x"])
+    candidate(repo, "b.example", legal_pages=["https://b.example/terms"], extra="kept")
+    problems = {item.path: item.problems for item in check_research(repo).candidates}
+    assert problems["candidates/b.example.yaml"] == []
+    assert [p.split(":")[0] for p in problems["candidates/a.example.yaml"]] == [
+        "`legal_pages`",
+        "`recipe`",
+    ]
+    schema = json.loads(runner.invoke(app, ["json-schema", "candidate"]).stdout)
+    assert schema["required"] == ["url", "why"]
+    assert {"option", "legal_pages", "recipe"} <= set(schema["properties"])

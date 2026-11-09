@@ -198,7 +198,9 @@ Judges the working tree's changes against `REF` (default `HEAD`) as an unattende
 run, without a model: only new `candidates/<host>.yaml` files, each with an http(s) `url` on
 that host and a `why`, none for a host that is a source or excluded, and at most `N` (default
 10). Prints `ready` or `not proposable` and exits 0 or 1. The template's opt-in `research`
-workflow runs it; see [automatic research](../concepts/auto-research.md).
+workflow runs it; see [automatic research](../concepts/auto-research.md). Before the first
+commit there is nothing to compare with: every file counts as new, the candidates are judged
+as usual, and the rest is taken as the project's first commit.
 
 ## `gleanyard map SOURCE [PROJECT] [--model ID] [--force] [--dry-run] [--json]`
 
@@ -280,9 +282,11 @@ files over 100 MB). `dataherb.json` lists the JSON lines parts as one resource. 
 compact enough to stay whole as well: `export_csv` gets every row, and the parts go to
 `export_csv_parts`, by default a folder named after the CSV.
 
-## `gleanyard json-schema {source|schema|project}`
+## `gleanyard json-schema {source|schema|project|candidate}`
 
-Prints the JSON Schema for a config file, for editor completion and AI tools.
+Prints the JSON Schema for a config file, for editor completion and AI tools. `candidate` is
+the shape of `candidates/<host>.yaml`: `url` and `why`, plus optional `option` (the best option
+from `gleanyard probe --json`), `legal_pages` and `recipe`.
 
 ## `gleanyard --version`
 

@@ -14,13 +14,33 @@ from typing import Any
 from urllib.parse import urlsplit
 
 import yaml
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
+from gleanyard.probe import Option
 from gleanyard.project import load_project
-from gleanyard.repair import changed_files
+from gleanyard.repair import changed_files, unborn
 
 CANDIDATES = "candidates"
 MAX_CANDIDATES = 10
+
+
+class Candidate(BaseModel):
+    """``candidates/<host>.yaml``: a page proposed as a source, not set up yet."""
+
+    model_config = ConfigDict(extra="allow")
+
+    url: str = Field(description="The page or feed, on the host the file is named for.")
+    why: str = Field(description="Why the page publishes what the schema describes.")
+    option: Option | str | None = Field(
+        default=None,
+        description="The best option from `gleanyard probe URL --json`, or a line about it.",
+    )
+    legal_pages: list[str] = Field(
+        default_factory=list, description="Imprint and terms pages that `probe` found."
+    )
+    recipe: str | None = Field(
+        default=None, description="A registry recipe that fits, for `gleanyard add`."
+    )
 
 
 class CandidateCheck(BaseModel):
@@ -36,6 +56,7 @@ class ResearchCheck(BaseModel):
     problems: list[str] = Field(
         default_factory=list, description="Reasons the change cannot be proposed at all."
     )
+    notes: list[str] = Field(default_factory=list)
 
     @property
     def files(self) -> list[str]:
@@ -61,6 +82,7 @@ class ResearchCheck(BaseModel):
         verdict = "**ready for review**" if self.proposable else "**not proposable**"
         lines = [f"## Research check: {verdict}", ""]
         lines += [f"- Problem: {problem}" for problem in self.problems]
+        lines += [f"- Note: {note}" for note in self.notes]
         for item in self.candidates:
             mark = "ok" if not item.problems else "FAIL"
             lines.append(f"- `{item.path}` ({item.url or 'no url'}): {mark}")
@@ -78,14 +100,26 @@ def check_research(
     if not changes:
         result.problems.append("nothing changed")
         return result
+    first_commit = unborn(project.root, base)
+    skipped = 0
     for change in changes:
         path = PurePosixPath(change.path)
         if path.parent != PurePosixPath(CANDIDATES) or path.suffix != ".yaml":
+            if first_commit:
+                skipped += 1  # the project itself, not yet committed
+                continue
             result.problems.append(f"{change.path}: research may add candidates/<host>.yaml only")
         elif change.status != "A":
             result.problems.append(f"{change.path}: research may add candidates, not change them")
         else:
             result.candidates.append(_check_candidate(project, change.path))
+    if first_commit:
+        result.notes.append(
+            f"no commit yet: every file is new; {skipped} file(s) outside {CANDIDATES}/ "
+            "are taken as the project's first commit and not judged"
+        )
+        if not result.candidates:
+            result.problems.append(f"no new {CANDIDATES}/<host>.yaml files")
     if len(result.candidates) > max_candidates:
         result.problems.append(
             f"{len(result.candidates)} candidates; a research run may propose {max_candidates}"
@@ -113,6 +147,13 @@ def _check_candidate(project, path: str) -> CandidateCheck:
         item.problems.append(f"the file is named for {item.host} but url is on {host}")
     if not isinstance(data.get("why"), str) or not data["why"].strip():
         item.problems.append("`why` must say why the page fits the schema")
+    try:
+        Candidate.model_validate(data)
+    except ValidationError as error:
+        for issue in error.errors():
+            where = ".".join(str(part) for part in issue["loc"])
+            if where not in {"url", "why"}:  # reported above in plainer words
+                item.problems.append(f"`{where}`: {issue['msg']}")
     known = project.host_status(url)
     if known["status"] == "source":
         item.problems.append(f"{host} is already a source: {', '.join(known['sources'])}")
