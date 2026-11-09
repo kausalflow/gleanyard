@@ -2,7 +2,7 @@
 
 Each project already watches itself: its `collect` workflow opens a `repair` issue when a
 source fails or is degraded. A hub watches many projects together. It is one small repo
-whose scheduled workflow reads every project's `status.json`, keeps one issue per active
+whose scheduled workflow reads every project's `status.json` (or a DataHerb job status), keeps one issue per active
 problem, posts a weekly digest, and shows an overview of all projects.
 
 ## Set one up in five minutes
@@ -50,6 +50,34 @@ viewer: false                # true adds a searchable table of each project's ex
 
 `gleanyard init` reminds you to add the topic `gleanyard` to a new project's repo, which is
 all a discovering hub needs. Listed repos and discovered ones are merged.
+
+### DataHerb job statuses
+
+The hub also reads a [DataHerb](dataherb.md) job status (`dataherb.status/v1`) wherever it
+would read a `status.json`, so it can watch DataHerb datasets that are not gleanyard projects,
+or a gleanyard project through the job status it writes. It tells the two apart by the file's
+`spec`. Point an entry at the file:
+
+```yaml
+repos:
+  - https://raw.githubusercontent.com/my-org/prices/main/_dataherb/status/prices/latest.json
+  - {repo: my-org/rates, status_path: _dataherb/status/rates/latest.json, name: Rates}   # a private repo, read through the API
+```
+
+`status_path` on an entry overrides the hub-wide `status_path` for that repo only. Each check
+in the file becomes a source on the dashboard:
+
+| In the job status | On the hub |
+| --- | --- |
+| a check `<name>`, `pass` | source `<name>`, ok, with the check's `value` as its record count |
+| a check `<name>`, `fail` | source `<name>` failing (degraded when gleanyard wrote `degraded:` before the message) |
+| a check `<name>/<kind>`, `warn` | a warning on source `<name>`: a gleanyard kind (`record_drop` ...) keeps its alert, any other is a "has a warning" alert |
+| no checks | one source named after the job: ok, degraded or failing as `run.status` is `success`, `partial` or `failed` |
+| `written_at` (else the run's times) | the report's time, for the missed-run alert |
+| `last_success` | each source's last success |
+
+A job status has no fill rates, terms or baselines, so those parts of the dashboard stay
+empty, and a gleanyard project is best watched through its `status.json`.
 
 ## Access
 

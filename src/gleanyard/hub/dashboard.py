@@ -120,7 +120,8 @@ def _repo(repo: RepoState, now: datetime) -> str:
         link = f"https://github.com/{escape(repo.repo)}"
         links = [f"<a href='{link}/actions'>Actions</a>", f"<a href='{link}'>Repo</a>"]
     else:
-        links = [f"<a href='{escape(repo.url or '')}'>status.json</a>"]
+        report = (repo.url or "").rstrip("/").rsplit("/", 1)[-1] or "report"
+        links = [f"<a href='{escape(repo.url or '')}'>{escape(report)}</a>"]
     if repo.export is not None:
         if repo.export.problem:
             links.append(f"<span class=problem>records: {escape(repo.export.problem)}</span>")

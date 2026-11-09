@@ -43,7 +43,9 @@ the CSV path its users already read.
 
 DataHerb turns a failed check into a degraded job, and a missing successful run within
 `expected_interval` into a stale one, so the catalog shows the same health as the
-[status hub](status-hub.md). `--from-cache` runs write nothing, as with `status.json`.
+[status hub](status-hub.md). `--from-cache` runs write nothing, as with `status.json`. The hub can read the job status
+itself too, which is how it watches DataHerb datasets that are not gleanyard projects (see
+[DataHerb job statuses](status-hub.md#dataherb-job-statuses)).
 
 ## Listing the repo in a catalog
 
