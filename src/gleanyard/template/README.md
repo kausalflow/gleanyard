@@ -60,7 +60,7 @@ Each run costs model usage. Only one repair pull request is open at a time.
 Open this repo in [Claude Code on the web](https://claude.ai/code) and ask it to research
 sources or set one up; it follows `CLAUDE.md`. Or create a Codespace (**Code → Codespaces**):
 the devcontainer in `.devcontainer/` brings gleanyard and Claude Code. See
-[Use without installing](https://kausalflow.github.io/gleanyard/concepts/no-install/).
+[Use without installing](https://gleanyard.kausalflow.com/concepts/no-install/).
 
 ## Working with an AI assistant
 
@@ -75,5 +75,5 @@ claude mcp add gleanyard -- gleanyard mcp     # or any MCP client: command `glea
 ```
 
 To watch this project together with others, add the topic `gleanyard` to the repo on GitHub:
-a [status hub](https://kausalflow.github.io/gleanyard/concepts/status-hub/) set up with
+a [status hub](https://gleanyard.kausalflow.com/concepts/status-hub/) set up with
 `gleanyard hub init --owner <you>` finds it by that topic.

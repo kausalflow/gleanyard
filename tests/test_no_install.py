@@ -54,6 +54,7 @@ def test_connector_fetches_only_the_registry_and_raw_github():
     hosts = set(re.findall(r"https://([a-z0-9.-]+)/", text))
     assert hosts <= {
         "kausalflow.github.io",
+        "gleanyard.kausalflow.com",
         "raw.githubusercontent.com",
         "github.com",
         "claude.ai",

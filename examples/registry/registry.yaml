@@ -1,4 +1,4 @@
-# An example gleanyard source registry. See https://kausalflow.github.io/gleanyard/concepts/registry/
+# An example gleanyard source registry. See https://gleanyard.kausalflow.com/concepts/registry/
 schema_version: 1
 name: example-registry
 # Projects whose health counts for the recipes they installed: owner/name of a public repo,

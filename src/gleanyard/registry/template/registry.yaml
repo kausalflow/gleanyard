@@ -1,4 +1,4 @@
-# A gleanyard source registry. See https://kausalflow.github.io/gleanyard/concepts/registry/
+# A gleanyard source registry. See https://gleanyard.kausalflow.com/concepts/registry/
 schema_version: 1
 name: {{registry}}
 {{url}}

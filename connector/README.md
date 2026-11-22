@@ -18,4 +18,4 @@ npx wrangler dev       # local server at http://localhost:8787/mcp
 npx wrangler deploy    # deploy to your Cloudflare account
 ```
 
-Docs: https://kausalflow.github.io/gleanyard/concepts/no-install/
+Docs: https://gleanyard.kausalflow.com/concepts/no-install/
