@@ -12,7 +12,7 @@
       "source": "./plugins/gleanyard",
       "description": "Set up, test and repair recurring web sources in a gleanyard project, with the gleanyard skill and MCP server.",
       "category": "data",
-      "homepage": "https://kausalflow.github.io/gleanyard/concepts/agents/"
+      "homepage": "https://gleanyard.kausalflow.com/concepts/agents/"
     }
   ]
 }

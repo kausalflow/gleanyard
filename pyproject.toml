@@ -39,8 +39,8 @@ classifiers = [
 gleanyard = "gleanyard.cli:app"
 
 [project.urls]
-Homepage = "https://kausalflow.github.io/gleanyard/"
-Documentation = "https://kausalflow.github.io/gleanyard/"
+Homepage = "https://gleanyard.kausalflow.com/"
+Documentation = "https://gleanyard.kausalflow.com/"
 Repository = "https://github.com/kausalflow/gleanyard"
 Issues = "https://github.com/kausalflow/gleanyard/issues"
 Template = "https://github.com/kausalflow/gleanyard-template"

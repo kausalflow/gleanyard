@@ -78,7 +78,7 @@ Trigger: a candidate the owner marked ready.
    writes the mapping if it validates and finds records, and lists fields that are not in the
    schema or required fields it left uncovered. Edit by hand until `try` passes; use
    `--force` to redraft an existing mapping. The mapping format is documented at
-   https://kausalflow.github.io/gleanyard/.
+   https://gleanyard.kausalflow.com/.
 4. Save one fixture page to `tests/fixtures/<id>.<ext>` (small, public, no personal data),
    then `gleanyard test -s <id> --update` to write `tests/fixtures/<id>.expected.json`. If the
    fixture's events have passed, add `--today <date the page was saved>`.

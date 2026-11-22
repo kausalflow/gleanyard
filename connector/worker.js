@@ -21,7 +21,7 @@ const REF = /^[A-Za-z0-9._\/-]{1,100}$/;
 const PATH = /^[A-Za-z0-9._\/-]{1,200}$/;
 const RECIPE = /^[a-z0-9][a-z0-9-]{0,80}$/;
 
-const DOCS = "https://kausalflow.github.io/gleanyard/";
+const DOCS = "https://gleanyard.kausalflow.com/";
 const TEMPLATE_REPO = "https://github.com/kausalflow/gleanyard-template";
 
 const INSTRUCTIONS = `gleanyard collects structured data from recurring web sources into a schema the user \

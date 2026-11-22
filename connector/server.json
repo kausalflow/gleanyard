@@ -3,7 +3,7 @@
   "name": "io.github.kausalflow/gleanyard",
   "title": "gleanyard (read-only)",
   "description": "Search gleanyard source recipes and read public gleanyard projects' records and health.",
-  "websiteUrl": "https://kausalflow.github.io/gleanyard/concepts/no-install/",
+  "websiteUrl": "https://gleanyard.kausalflow.com/concepts/no-install/",
   "repository": {
     "url": "https://github.com/kausalflow/gleanyard",
     "source": "github",
@@ -13,7 +13,7 @@
   "remotes": [
     {
       "type": "streamable-http",
-      "url": "https://gleanyard-connector.leima.workers.dev/mcp"
+      "url": "https://gleanyard.kausalflow.com/mcp"
     }
   ]
 }

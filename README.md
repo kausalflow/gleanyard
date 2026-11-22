@@ -4,7 +4,7 @@
 checks every record against your schema, watches itself, and opens a repair pull request
 when a site changes.**
 
-[Docs](https://kausalflow.github.io/gleanyard/) ·
+[Docs](https://gleanyard.kausalflow.com/) ·
 [Use this template](https://github.com/kausalflow/gleanyard-template/generate) ·
 [Source registry](https://kausalflow.github.io/gleanyard-registry/) ·
 [Live example](https://github.com/kausalflow/berlin-family-events)
@@ -29,12 +29,12 @@ this way: three Berlin family event calendars, collected daily into one schema.
 - **Start a project:** [use the template](https://github.com/kausalflow/gleanyard-template/generate),
   then open it in [Claude Code on the web](https://claude.ai/code) or a Codespace and ask
   it to research sources.
-- **Ask from any AI app:** add `https://gleanyard-connector.leima.workers.dev/mcp` as a
+- **Ask from any AI app:** add `https://gleanyard.kausalflow.com/mcp` as a
   custom connector in claude.ai, ChatGPT or another MCP client. It searches the source
   registry and reads public projects' records and health, read-only.
 - **In your own workflows:** `uses: kausalflow/gleanyard@v0.14.0`.
 
-See [Use without installing](https://kausalflow.github.io/gleanyard/concepts/no-install/).
+See [Use without installing](https://gleanyard.kausalflow.com/concepts/no-install/).
 With Python: `pip install gleanyard && gleanyard init my-project`; in Claude Code:
 `/plugin install gleanyard --marketplace kausalflow/gleanyard`.
 
@@ -103,7 +103,7 @@ source is collected and exported by its stated tier, and only `rejected` or `blo
 it (`rights_policy.require_reviewed_permission: true` restores the strict rule). Set
 `export_csv` for a CSV copy, or `export: null` for CSV only.
 
-See the [command line reference](https://kausalflow.github.io/gleanyard/reference/cli/) for
+See the [command line reference](https://gleanyard.kausalflow.com/reference/cli/) for
 every command.
 
 ## With an AI assistant
@@ -115,7 +115,7 @@ In Claude Code, install the gleanyard plugin. It brings the skill and the
 /plugin install gleanyard --marketplace kausalflow/gleanyard
 ```
 
-See [AI assistants](https://kausalflow.github.io/gleanyard/concepts/agents/) for other clients.
+See [AI assistants](https://gleanyard.kausalflow.com/concepts/agents/) for other clients.
 
 ## Releasing
 
